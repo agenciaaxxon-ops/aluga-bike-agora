@@ -19,7 +19,7 @@ import {
   Settings
 } from "lucide-react";
 import QRCode from "qrcode";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Tipo para veículos
@@ -132,7 +132,7 @@ const Dashboard = () => {
 
   const handleStartRental = (vehicle: Vehicle, duration: number) => {
     const rentalId = Math.random().toString(36).substring(7);
-    const clientLink = `${window.location.origin}/cliente/${rentalId}`;
+    const clientLink = `/cliente/${rentalId}`;
     const updatedVehicle = {
       ...vehicle,
       status: "alugado" as VehicleStatus,
@@ -574,7 +574,7 @@ const Dashboard = () => {
                         size="sm"
                         className="flex-1"
                         onClick={() => {
-                          const link = vehicle.currentRental?.clientLink ?? "";
+                          const link = `${window.location.origin}${vehicle.currentRental?.clientLink}`;
                           navigator.clipboard.writeText(link);
                           toast({ title: "Link copiado!" });
                         }}
@@ -587,7 +587,7 @@ const Dashboard = () => {
                         size="sm"
                         className="flex-1"
                         onClick={async () => {
-                          const link = vehicle.currentRental?.clientLink ?? "";
+                          const link = `${window.location.origin}${vehicle.currentRental?.clientLink}`;
                           try {
                             const dataUrl = await QRCode.toDataURL(link);
                             setQrDataUrl(dataUrl);
