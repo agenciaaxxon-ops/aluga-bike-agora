@@ -1,27 +1,106 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Bike, Store, Mail, Lock, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/components/ui/use-toast";
 
 const Login = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
+  const [storeName, setStoreName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [registerEmail, setRegisterEmail] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+
+  const emailSchema = z.string().trim().email("Email inválido").max(255);
+  const passwordSchema = z.string().min(6, "A senha deve ter pelo menos 6 caracteres").max(128);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Aqui será implementada a autenticação com Supabase
-    setTimeout(() => setIsLoading(false), 2000);
+    try {
+      emailSchema.parse(loginEmail);
+      passwordSchema.parse(loginPassword);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (error) {
+        toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Login realizado com sucesso" });
+        navigate("/dashboard");
+      }
+    } catch (err: any) {
+      toast({ title: "Dados inválidos", description: err?.message ?? "Verifique os campos", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Aqui será implementado o cadastro com Supabase
-    setTimeout(() => setIsLoading(false), 2000);
+    try {
+      if (!storeName.trim()) throw new Error("Informe o nome da loja");
+      if (!ownerName.trim()) throw new Error("Informe o nome do responsável");
+      emailSchema.parse(registerEmail);
+      passwordSchema.parse(registerPassword);
+
+      const redirectUrl = `${window.location.origin}/`;
+
+      const { data, error } = await supabase.auth.signUp({
+        email: registerEmail,
+        password: registerPassword,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: { store_name: storeName, owner_name: ownerName },
+        },
+      });
+
+      if (error) {
+        toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+      } else {
+        if (data.session) {
+          toast({ title: "Cadastro realizado!" });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Confirme seu email",
+            description: "Enviamos um link de confirmação para concluir o cadastro.",
+          });
+        }
+      }
+    } catch (err: any) {
+      toast({ title: "Dados inválidos", description: err?.message ?? "Verifique os campos", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    document.title = "Login | Aluga Bike Baixada";
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) navigate("/dashboard");
+    });
+    // Checagem inicial após configurar o listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) navigate("/dashboard");
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-app flex items-center justify-center p-4">
@@ -62,6 +141,8 @@ const Login = () => {
                         placeholder="seu@email.com"
                         className="pl-10"
                         required
+                        value={loginEmail}
+                        onChange={(e) => setLoginEmail(e.target.value)}
                       />
                     </div>
                   </div>
@@ -76,6 +157,8 @@ const Login = () => {
                         placeholder="••••••••"
                         className="pl-10"
                         required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
                       />
                     </div>
                   </div>
@@ -103,6 +186,8 @@ const Login = () => {
                         placeholder="Bike Adventures"
                         className="pl-10"
                         required
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
                       />
                     </div>
                   </div>
@@ -117,6 +202,8 @@ const Login = () => {
                         placeholder="João Silva"
                         className="pl-10"
                         required
+                        value={ownerName}
+                        onChange={(e) => setOwnerName(e.target.value)}
                       />
                     </div>
                   </div>
@@ -131,6 +218,8 @@ const Login = () => {
                         placeholder="contato@minhaloja.com"
                         className="pl-10"
                         required
+                        value={registerEmail}
+                        onChange={(e) => setRegisterEmail(e.target.value)}
                       />
                     </div>
                   </div>
@@ -145,6 +234,8 @@ const Login = () => {
                         placeholder="••••••••"
                         className="pl-10"
                         required
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value)}
                       />
                     </div>
                   </div>
