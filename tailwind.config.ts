@@ -47,16 +47,35 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        vehicle: {
+          available: "hsl(var(--vehicle-available))",
+          rented: "hsl(var(--vehicle-rented))",
+          maintenance: "hsl(var(--vehicle-maintenance))",
+        },
+      },
+      boxShadow: {
+        sm: "var(--shadow-sm)",
+        md: "var(--shadow-md)",
+        lg: "var(--shadow-lg)",
+        emerald: "var(--shadow-emerald)",
+      },
+      backgroundImage: {
+        'app-gradient': 'var(--app-gradient)',
+      },
+      backgroundColor: {
+        'app': 'hsl(var(--app-bg))',
+      },
+      transitionProperty: {
+        'all': 'var(--transition-all)',
+        'colors': 'var(--transition-colors)',
       },
       borderRadius: {
         lg: "var(--radius)",
