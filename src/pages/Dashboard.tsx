@@ -110,9 +110,9 @@ const Dashboard = () => {
 
   const getStatusColor = (status: VehicleStatus) => {
     switch (status) {
-      case "disponivel": return "bg-vehicle-available text-white";
-      case "alugado": return "bg-vehicle-rented text-white";
-      case "manutencao": return "bg-vehicle-maintenance text-white";
+      case "disponivel": return "bg-success text-success-foreground";
+      case "alugado": return "bg-warning text-warning-foreground";
+      case "manutencao": return "bg-muted text-muted-foreground";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -173,7 +173,7 @@ const Dashboard = () => {
               <Timer className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-vehicle-rented">
+              <div className="text-2xl font-bold text-warning">
                 {vehicles.filter(v => v.status === "alugado").length}
               </div>
             </CardContent>
@@ -185,7 +185,7 @@ const Dashboard = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-vehicle-available">
+              <div className="text-2xl font-bold text-success">
                 {vehicles.filter(v => v.status === "disponivel").length}
               </div>
             </CardContent>
