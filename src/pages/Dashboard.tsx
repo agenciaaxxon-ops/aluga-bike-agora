@@ -24,8 +24,18 @@ type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
 type VehicleStatus = "disponivel" | "alugado" | "manutencao";
 
 interface PricingConfig {
-  pricePerMinute: number;
-  additionalTimePrice: number;
+  bicicleta: {
+    pricePerMinute: number;
+    additionalTimePrice: number;
+  };
+  triciclo: {
+    pricePerMinute: number;
+    additionalTimePrice: number;
+  };
+  quadriciclo: {
+    pricePerMinute: number;
+    additionalTimePrice: number;
+  };
 }
 
 interface Vehicle {
@@ -51,8 +61,18 @@ interface RentalReport {
 
 const Dashboard = () => {
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({
-    pricePerMinute: 1.0, // R$ 1,00 por minuto
-    additionalTimePrice: 1.0 // R$ 1,00 por minuto adicional
+    bicicleta: {
+      pricePerMinute: 0.50, // R$ 0,50 por minuto
+      additionalTimePrice: 0.50
+    },
+    triciclo: {
+      pricePerMinute: 0.75, // R$ 0,75 por minuto
+      additionalTimePrice: 0.75
+    },
+    quadriciclo: {
+      pricePerMinute: 1.00, // R$ 1,00 por minuto
+      additionalTimePrice: 1.00
+    }
   });
   const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [rentalReport, setRentalReport] = useState<RentalReport | null>(null);
@@ -125,14 +145,15 @@ const Dashboard = () => {
     
     const endTime = new Date();
     const totalMinutes = Math.ceil((endTime.getTime() - vehicle.currentRental.startTime.getTime()) / (1000 * 60));
-    const totalAmount = totalMinutes * pricingConfig.pricePerMinute;
+    const vehiclePricing = pricingConfig[vehicle.type];
+    const totalAmount = totalMinutes * vehiclePricing.pricePerMinute;
     
     const report: RentalReport = {
       vehicleName: vehicle.name,
       startTime: vehicle.currentRental.startTime,
       endTime,
       totalMinutes,
-      pricePerMinute: pricingConfig.pricePerMinute,
+      pricePerMinute: vehiclePricing.pricePerMinute,
       totalAmount
     };
     
@@ -149,13 +170,22 @@ const Dashboard = () => {
   };
 
   const handleUpdatePricing = (formData: FormData) => {
-    const pricePerMinute = parseFloat(formData.get("pricePerMinute") as string);
-    const additionalTimePrice = parseFloat(formData.get("additionalTimePrice") as string);
+    const newPricing: PricingConfig = {
+      bicicleta: {
+        pricePerMinute: parseFloat(formData.get("bicicleta_pricePerMinute") as string),
+        additionalTimePrice: parseFloat(formData.get("bicicleta_additionalTimePrice") as string)
+      },
+      triciclo: {
+        pricePerMinute: parseFloat(formData.get("triciclo_pricePerMinute") as string),
+        additionalTimePrice: parseFloat(formData.get("triciclo_additionalTimePrice") as string)
+      },
+      quadriciclo: {
+        pricePerMinute: parseFloat(formData.get("quadriciclo_pricePerMinute") as string),
+        additionalTimePrice: parseFloat(formData.get("quadriciclo_additionalTimePrice") as string)
+      }
+    };
     
-    setPricingConfig({
-      pricePerMinute,
-      additionalTimePrice
-    });
+    setPricingConfig(newPricing);
     setIsPricingModalOpen(false);
   };
 
@@ -207,40 +237,108 @@ const Dashboard = () => {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Configurar Preços</DialogTitle>
+                    <DialogTitle>Configurar Preços por Tipo de Veículo</DialogTitle>
                     <DialogDescription>
-                      Defina os valores para aluguel e tempo adicional
+                      Defina os valores para cada tipo de veículo
                     </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={(e) => {
                     e.preventDefault();
                     const formData = new FormData(e.currentTarget);
                     handleUpdatePricing(formData);
-                  }} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="pricePerMinute">Preço por minuto (R$)</Label>
-                      <Input
-                        id="pricePerMinute"
-                        name="pricePerMinute"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        defaultValue={pricingConfig.pricePerMinute}
-                        required
-                      />
-                    </div>
+                  }} className="space-y-6">
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="additionalTimePrice">Preço tempo adicional (R$/min)</Label>
-                      <Input
-                        id="additionalTimePrice"
-                        name="additionalTimePrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        defaultValue={pricingConfig.additionalTimePrice}
-                        required
-                      />
+                    {/* Bicicleta */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-foreground">Bicicleta</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="bicicleta_pricePerMinute">Preço/min (R$)</Label>
+                          <Input
+                            id="bicicleta_pricePerMinute"
+                            name="bicicleta_pricePerMinute"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.bicicleta.pricePerMinute}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="bicicleta_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                          <Input
+                            id="bicicleta_additionalTimePrice"
+                            name="bicicleta_additionalTimePrice"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.bicicleta.additionalTimePrice}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Triciclo */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-foreground">Triciclo</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="triciclo_pricePerMinute">Preço/min (R$)</Label>
+                          <Input
+                            id="triciclo_pricePerMinute"
+                            name="triciclo_pricePerMinute"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.triciclo.pricePerMinute}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="triciclo_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                          <Input
+                            id="triciclo_additionalTimePrice"
+                            name="triciclo_additionalTimePrice"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.triciclo.additionalTimePrice}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Quadriciclo */}
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-foreground">Quadriciclo</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="quadriciclo_pricePerMinute">Preço/min (R$)</Label>
+                          <Input
+                            id="quadriciclo_pricePerMinute"
+                            name="quadriciclo_pricePerMinute"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.quadriciclo.pricePerMinute}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="quadriciclo_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                          <Input
+                            id="quadriciclo_additionalTimePrice"
+                            name="quadriciclo_additionalTimePrice"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            defaultValue={pricingConfig.quadriciclo.additionalTimePrice}
+                            required
+                          />
+                        </div>
+                      </div>
                     </div>
                     
                     <div className="flex gap-3 pt-4">
@@ -253,7 +351,7 @@ const Dashboard = () => {
                         Cancelar
                       </Button>
                       <Button type="submit" className="flex-1">
-                        Salvar
+                        Salvar Preços
                       </Button>
                     </div>
                   </form>
