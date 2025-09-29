@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import QRCode from "qrcode";
 import { toast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import DashboardTour from "@/components/DashboardTour";
+import { supabase } from "@/integrations/supabase/client";
 
 // Tipo para veículos
 type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
@@ -48,10 +49,14 @@ interface Vehicle {
   name: string;
   type: VehicleType;
   status: VehicleStatus;
+  shop_id?: string;
   currentRental?: {
+    id: string;
     startTime: Date;
+    endTime: Date;
     duration: number; // em minutos
     clientLink: string;
+    accessCode: string;
   };
 }
 
@@ -85,6 +90,8 @@ const Dashboard = () => {
   
   // Iniciar sem veículos para mostrar o tour
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [userShop, setUserShop] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
@@ -95,70 +102,243 @@ const Dashboard = () => {
   const [endConfirmForId, setEndConfirmForId] = useState<string | null>(null);
   const [deleteConfirmForId, setDeleteConfirmForId] = useState<string | null>(null);
 
-  const handleAddVehicle = (formData: FormData) => {
+  // Carregar dados do usuário e veículos
+  useEffect(() => {
+    loadUserData();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Buscar ou criar loja do usuário
+      let { data: shop } = await supabase
+        .from('shops')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!shop) {
+        // Criar loja padrão
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('store_name')
+          .eq('id', user.id)
+          .single();
+
+        const { data: newShop, error } = await supabase
+          .from('shops')
+          .insert({
+            user_id: user.id,
+            name: profile?.store_name || 'Minha Loja',
+            price_per_minute: 0.69
+          })
+          .select()
+          .single();
+
+        if (error) {
+          toast({ title: "Erro ao criar loja", variant: "destructive" });
+          return;
+        }
+        shop = newShop;
+      }
+
+      setUserShop(shop);
+      await loadVehicles(shop.id);
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      toast({ title: "Erro ao carregar dados", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadVehicles = async (shopId: string) => {
+    try {
+      // Buscar veículos
+      const { data: vehiclesData, error: vehiclesError } = await supabase
+        .from('vehicles')
+        .select('*')
+        .eq('shop_id', shopId);
+
+      if (vehiclesError) throw vehiclesError;
+
+      // Buscar aluguéis ativos
+      const { data: rentalsData, error: rentalsError } = await supabase
+        .from('rentals')
+        .select('*')
+        .eq('status', 'Ativo')
+        .in('vehicle_id', vehiclesData?.map(v => v.id) || []);
+
+      if (rentalsError) throw rentalsError;
+
+      // Combinar dados
+      const vehiclesWithRentals: Vehicle[] = (vehiclesData || []).map(vehicle => {
+        const rental = rentalsData?.find(r => r.vehicle_id === vehicle.id);
+        return {
+          id: vehicle.id,
+          name: vehicle.name,
+          type: vehicle.type as VehicleType,
+          status: rental ? "alugado" : (vehicle.status === 'Disponível' ? "disponivel" : "manutencao") as VehicleStatus,
+          shop_id: vehicle.shop_id,
+          currentRental: rental ? {
+            id: rental.id,
+            startTime: new Date(rental.start_time),
+            endTime: new Date(rental.end_time),
+            duration: Math.ceil((new Date(rental.end_time).getTime() - new Date(rental.start_time).getTime()) / (1000 * 60)),
+            clientLink: `/cliente/${rental.access_code}`,
+            accessCode: rental.access_code
+          } : undefined
+        };
+      });
+
+      setVehicles(vehiclesWithRentals);
+    } catch (error) {
+      console.error('Erro ao carregar veículos:', error);
+      toast({ title: "Erro ao carregar veículos", variant: "destructive" });
+    }
+  };
+
+  const handleAddVehicle = async (formData: FormData) => {
+    if (!userShop) return;
+    
     const name = formData.get("vehicleName") as string;
     const type = formData.get("vehicleType") as VehicleType;
     
-    const newVehicle: Vehicle = {
-      id: Date.now().toString(),
-      name,
-      type,
-      status: "disponivel"
-    };
-    
-    setVehicles([...vehicles, newVehicle]);
-    setIsAddModalOpen(false);
-    toast({ title: "Veículo adicionado com sucesso!" });
+    try {
+      const { data, error } = await supabase
+        .from('vehicles')
+        .insert({
+          name,
+          type,
+          shop_id: userShop.id,
+          status: 'Disponível'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newVehicle: Vehicle = {
+        id: data.id,
+        name: data.name,
+        type: data.type as VehicleType,
+        status: "disponivel",
+        shop_id: data.shop_id
+      };
+      
+      setVehicles([...vehicles, newVehicle]);
+      setIsAddModalOpen(false);
+      toast({ title: "Veículo adicionado com sucesso!" });
+    } catch (error) {
+      console.error('Erro ao adicionar veículo:', error);
+      toast({ title: "Erro ao adicionar veículo", variant: "destructive" });
+    }
   };
 
-  const handleStartRental = (vehicle: Vehicle, duration: number) => {
-    const rentalId = Math.random().toString(36).substring(7);
-    const clientLink = `/cliente/${rentalId}`;
-    const updatedVehicle = {
-      ...vehicle,
-      status: "alugado" as VehicleStatus,
-      currentRental: {
-        startTime: new Date(),
-        duration,
-        clientLink
-      }
-    };
-    
-    setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
-    setSelectedVehicle(updatedVehicle);
-    setIsRentalModalOpen(false);
+  const handleStartRental = async (vehicle: Vehicle, duration: number) => {
+    if (!userShop) return;
+
+    try {
+      const startTime = new Date();
+      const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+      
+      const { data, error } = await supabase
+        .from('rentals')
+        .insert({
+          vehicle_id: vehicle.id,
+          shop_id: userShop.id,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          status: 'Ativo'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Atualizar status do veículo
+      await supabase
+        .from('vehicles')
+        .update({ status: 'Alugado' })
+        .eq('id', vehicle.id);
+
+      const updatedVehicle: Vehicle = {
+        ...vehicle,
+        status: "alugado",
+        currentRental: {
+          id: data.id,
+          startTime,
+          endTime,
+          duration,
+          clientLink: `/cliente/${data.access_code}`,
+          accessCode: data.access_code
+        }
+      };
+      
+      setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
+      setSelectedVehicle(updatedVehicle);
+      setIsRentalModalOpen(false);
+      toast({ title: "Aluguel iniciado com sucesso!" });
+    } catch (error) {
+      console.error('Erro ao iniciar aluguel:', error);
+      toast({ title: "Erro ao iniciar aluguel", variant: "destructive" });
+    }
   };
 
-  const handleEndRental = (vehicle: Vehicle) => {
+  const handleEndRental = async (vehicle: Vehicle) => {
     if (!vehicle.currentRental) return;
     
-    const endTime = new Date();
-    const totalMinutes = Math.ceil((endTime.getTime() - vehicle.currentRental.startTime.getTime()) / (1000 * 60));
-    const vehiclePricing = pricingConfig[vehicle.type];
-    const totalAmount = totalMinutes * vehiclePricing.pricePerMinute;
-    
-    const report: RentalReport = {
-      vehicleName: vehicle.name,
-      startTime: vehicle.currentRental.startTime,
-      endTime,
-      totalMinutes,
-      pricePerMinute: vehiclePricing.pricePerMinute,
-      totalAmount
-    };
-    
-    setRentalReport(report);
-    setIsReportModalOpen(true);
-    
-    const updatedVehicle = {
-      ...vehicle,
-      status: "disponivel" as VehicleStatus,
-      currentRental: undefined
-    };
-    
-    setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
+    try {
+      const endTime = new Date();
+      const totalMinutes = Math.ceil((endTime.getTime() - vehicle.currentRental.startTime.getTime()) / (1000 * 60));
+      const vehiclePricing = pricingConfig[vehicle.type];
+      const totalAmount = totalMinutes * vehiclePricing.pricePerMinute;
+      
+      // Finalizar aluguel no banco
+      await supabase
+        .from('rentals')
+        .update({ 
+          status: 'Finalizado',
+          actual_end_time: endTime.toISOString(),
+          total_cost: totalAmount
+        })
+        .eq('id', vehicle.currentRental.id);
+
+      // Atualizar status do veículo
+      await supabase
+        .from('vehicles')
+        .update({ status: 'Disponível' })
+        .eq('id', vehicle.id);
+
+      const report: RentalReport = {
+        vehicleName: vehicle.name,
+        startTime: vehicle.currentRental.startTime,
+        endTime,
+        totalMinutes,
+        pricePerMinute: vehiclePricing.pricePerMinute,
+        totalAmount
+      };
+      
+      setRentalReport(report);
+      setIsReportModalOpen(true);
+      
+      const updatedVehicle = {
+        ...vehicle,
+        status: "disponivel" as VehicleStatus,
+        currentRental: undefined
+      };
+      
+      setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
+      toast({ title: "Aluguel finalizado com sucesso!" });
+    } catch (error) {
+      console.error('Erro ao finalizar aluguel:', error);
+      toast({ title: "Erro ao finalizar aluguel", variant: "destructive" });
+    }
   };
 
-  const handleDeleteVehicle = (vehicleId: string) => {
+  const handleDeleteVehicle = async (vehicleId: string) => {
     const vehicle = vehicles.find(v => v.id === vehicleId);
     if (vehicle?.status === "alugado") {
       toast({ 
@@ -168,8 +348,21 @@ const Dashboard = () => {
       });
       return;
     }
-    setVehicles(vehicles.filter(v => v.id !== vehicleId));
-    toast({ title: "Veículo removido com sucesso" });
+
+    try {
+      const { error } = await supabase
+        .from('vehicles')
+        .delete()
+        .eq('id', vehicleId);
+
+      if (error) throw error;
+
+      setVehicles(vehicles.filter(v => v.id !== vehicleId));
+      toast({ title: "Veículo removido com sucesso" });
+    } catch (error) {
+      console.error('Erro ao remover veículo:', error);
+      toast({ title: "Erro ao remover veículo", variant: "destructive" });
+    }
   };
 
   const handleUpdatePricing = (formData: FormData) => {
@@ -216,6 +409,12 @@ const Dashboard = () => {
   };
 
   // Mostrar tour se não há veículos
+  if (loading) {
+    return <div className="min-h-screen bg-app flex items-center justify-center">
+      <div className="text-center">Carregando...</div>
+    </div>;
+  }
+
   if (vehicles.length === 0) {
     return (
       <div className="min-h-screen bg-app">
@@ -797,9 +996,7 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Tempo restante:</span>
                       <span className="font-mono font-medium">
-                        {Math.max(0, vehicle.currentRental.duration - 
-                          Math.floor((Date.now() - vehicle.currentRental.startTime.getTime()) / (1000 * 60))
-                        )} min
+                        {Math.max(0, Math.floor((vehicle.currentRental.endTime.getTime() - Date.now()) / (1000 * 60)))} min
                       </span>
                     </div>
                     
