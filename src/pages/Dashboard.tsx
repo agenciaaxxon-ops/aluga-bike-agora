@@ -18,6 +18,9 @@ import {
   Timer,
   Settings
 } from "lucide-react";
+import QRCode from "qrcode";
+import { toast } from "@/components/ui/use-toast";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 // Tipo para veículos
 type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
@@ -107,6 +110,10 @@ const Dashboard = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [qrOpen, setQrOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrLink, setQrLink] = useState<string>("");
+  const [endConfirmForId, setEndConfirmForId] = useState<string | null>(null);
 
   const handleAddVehicle = (formData: FormData) => {
     const name = formData.get("vehicleName") as string;
@@ -124,7 +131,8 @@ const Dashboard = () => {
   };
 
   const handleStartRental = (vehicle: Vehicle, duration: number) => {
-    const clientLink = `cliente/${Math.random().toString(36).substring(7)}`;
+    const rentalId = Math.random().toString(36).substring(7);
+    const clientLink = `${window.location.origin}/cliente/${rentalId}`;
     const updatedVehicle = {
       ...vehicle,
       status: "alugado" as VehicleStatus,
@@ -566,8 +574,9 @@ const Dashboard = () => {
                         size="sm"
                         className="flex-1"
                         onClick={() => {
-                          // Copiar link para compartilhar
-                          navigator.clipboard.writeText(`${window.location.origin}/${vehicle.currentRental?.clientLink}`);
+                          const link = vehicle.currentRental?.clientLink ?? "";
+                          navigator.clipboard.writeText(link);
+                          toast({ title: "Link copiado!" });
                         }}
                       >
                         <Share2 className="w-4 h-4 mr-1" />
@@ -577,6 +586,17 @@ const Dashboard = () => {
                         variant="outline"
                         size="sm"
                         className="flex-1"
+                        onClick={async () => {
+                          const link = vehicle.currentRental?.clientLink ?? "";
+                          try {
+                            const dataUrl = await QRCode.toDataURL(link);
+                            setQrDataUrl(dataUrl);
+                            setQrLink(link);
+                            setQrOpen(true);
+                          } catch (e) {
+                            toast({ title: "Erro ao gerar QR Code", variant: "destructive" });
+                          }
+                        }}
                       >
                         <QrCode className="w-4 h-4 mr-1" />
                         QR Code
@@ -587,7 +607,7 @@ const Dashboard = () => {
                       variant="destructive"
                       size="sm"
                       className="w-full"
-                      onClick={() => handleEndRental(vehicle)}
+                      onClick={() => setEndConfirmForId(vehicle.id)}
                     >
                       <Square className="w-4 h-4 mr-2" />
                       Finalizar Aluguel
@@ -669,6 +689,38 @@ const Dashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* QR Code do Cliente */}
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Code do Cliente</DialogTitle>
+            <DialogDescription>Escaneie para abrir o cronômetro no celular</DialogDescription>
+          </DialogHeader>
+          {qrDataUrl && (
+            <div className="flex flex-col items-center gap-3">
+              <img src={qrDataUrl} alt="QR Code cronômetro" className="w-56 h-56" loading="lazy" />
+              <div className="text-xs break-all text-muted-foreground text-center">{qrLink}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação de Finalização */}
+      <AlertDialog open={!!endConfirmForId} onOpenChange={(open) => { if (!open) setEndConfirmForId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar aluguel?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Confirme que o veículo foi devolvido.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { const v = vehicles.find(v => v.id === endConfirmForId); if (v) handleEndRental(v); setEndConfirmForId(null); }}>Finalizar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
