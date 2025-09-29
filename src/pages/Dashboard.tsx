@@ -16,11 +16,13 @@ import {
   QrCode,
   Share2,
   Timer,
-  Settings
+  Settings,
+  Trash2
 } from "lucide-react";
 import QRCode from "qrcode";
 import { toast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import DashboardTour from "@/components/DashboardTour";
 
 // Tipo para veículos
 type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
@@ -81,31 +83,8 @@ const Dashboard = () => {
   const [rentalReport, setRentalReport] = useState<RentalReport | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   
-  const [vehicles, setVehicles] = useState<Vehicle[]>([
-    {
-      id: "1",
-      name: "Bike Azul #001",
-      type: "bicicleta",
-      status: "disponivel"
-    },
-    {
-      id: "2", 
-      name: "Triciclo Rosa #002",
-      type: "triciclo",
-      status: "alugado",
-      currentRental: {
-        startTime: new Date(Date.now() - 30 * 60 * 1000), // 30 min atrás
-        duration: 60,
-        clientLink: "cliente/abc123"
-      }
-    },
-    {
-      id: "3",
-      name: "Quadri Verde #003", 
-      type: "quadriciclo",
-      status: "disponivel"
-    }
-  ]);
+  // Iniciar sem veículos para mostrar o tour
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRentalModalOpen, setIsRentalModalOpen] = useState(false);
@@ -114,6 +93,7 @@ const Dashboard = () => {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
   const [qrLink, setQrLink] = useState<string>("");
   const [endConfirmForId, setEndConfirmForId] = useState<string | null>(null);
+  const [deleteConfirmForId, setDeleteConfirmForId] = useState<string | null>(null);
 
   const handleAddVehicle = (formData: FormData) => {
     const name = formData.get("vehicleName") as string;
@@ -128,6 +108,7 @@ const Dashboard = () => {
     
     setVehicles([...vehicles, newVehicle]);
     setIsAddModalOpen(false);
+    toast({ title: "Veículo adicionado com sucesso!" });
   };
 
   const handleStartRental = (vehicle: Vehicle, duration: number) => {
@@ -177,6 +158,20 @@ const Dashboard = () => {
     setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
   };
 
+  const handleDeleteVehicle = (vehicleId: string) => {
+    const vehicle = vehicles.find(v => v.id === vehicleId);
+    if (vehicle?.status === "alugado") {
+      toast({ 
+        title: "Não é possível remover", 
+        description: "Finalize o aluguel antes de remover o veículo",
+        variant: "destructive" 
+      });
+      return;
+    }
+    setVehicles(vehicles.filter(v => v.id !== vehicleId));
+    toast({ title: "Veículo removido com sucesso" });
+  };
+
   const handleUpdatePricing = (formData: FormData) => {
     const newPricing: PricingConfig = {
       bicicleta: {
@@ -195,6 +190,7 @@ const Dashboard = () => {
     
     setPricingConfig(newPricing);
     setIsPricingModalOpen(false);
+    toast({ title: "Preços atualizados com sucesso!" });
   };
 
   const getStatusColor = (status: VehicleStatus) => {
@@ -218,6 +214,227 @@ const Dashboard = () => {
   const getVehicleIcon = (type: VehicleType) => {
     return <Bike className="w-8 h-8" />;
   };
+
+  // Mostrar tour se não há veículos
+  if (vehicles.length === 0) {
+    return (
+      <div className="min-h-screen bg-app">
+        {/* Header */}
+        <div className="bg-white border-b shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center py-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-app-gradient rounded-xl flex items-center justify-center">
+                  <Bike className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-foreground">Bike Adventures</h1>
+                  <p className="text-sm text-muted-foreground">Painel de Gerenciamento</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Preços
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Configurar Preços por Tipo de Veículo</DialogTitle>
+                      <DialogDescription>
+                        Defina os valores para cada tipo de veículo
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const formData = new FormData(e.currentTarget);
+                      handleUpdatePricing(formData);
+                    }} className="space-y-6">
+                      
+                      {/* Bicicleta */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground">Bicicleta</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="bicicleta_pricePerMinute">Preço/min (R$)</Label>
+                            <Input
+                              id="bicicleta_pricePerMinute"
+                              name="bicicleta_pricePerMinute"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.bicicleta.pricePerMinute}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="bicicleta_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                            <Input
+                              id="bicicleta_additionalTimePrice"
+                              name="bicicleta_additionalTimePrice"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.bicicleta.additionalTimePrice}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Triciclo */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground">Triciclo</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="triciclo_pricePerMinute">Preço/min (R$)</Label>
+                            <Input
+                              id="triciclo_pricePerMinute"
+                              name="triciclo_pricePerMinute"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.triciclo.pricePerMinute}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="triciclo_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                            <Input
+                              id="triciclo_additionalTimePrice"
+                              name="triciclo_additionalTimePrice"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.triciclo.additionalTimePrice}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Quadriciclo */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-foreground">Quadriciclo</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <Label htmlFor="quadriciclo_pricePerMinute">Preço/min (R$)</Label>
+                            <Input
+                              id="quadriciclo_pricePerMinute"
+                              name="quadriciclo_pricePerMinute"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.quadriciclo.pricePerMinute}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="quadriciclo_additionalTimePrice">Tempo adicional (R$/min)</Label>
+                            <Input
+                              id="quadriciclo_additionalTimePrice"
+                              name="quadriciclo_additionalTimePrice"
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              defaultValue={pricingConfig.quadriciclo.additionalTimePrice}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => setIsPricingModalOpen(false)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button type="submit" className="flex-1">
+                          Salvar Preços
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+                
+                <Button variant="outline" size="sm">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sair
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tour Content */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <DashboardTour onAddVehicle={() => setIsAddModalOpen(true)} />
+        </div>
+
+        {/* Add Vehicle Modal */}
+        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Novo Veículo</DialogTitle>
+              <DialogDescription>
+                Cadastre um novo veículo na sua frota
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.currentTarget);
+              handleAddVehicle(formData);
+            }} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="vehicleName">Nome/Identificador</Label>
+                <Input
+                  id="vehicleName"
+                  name="vehicleName"
+                  placeholder="Ex: Bike Azul #004"
+                  required
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="vehicleType">Tipo de Veículo</Label>
+                <Select name="vehicleType" required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bicicleta">Bicicleta</SelectItem>
+                    <SelectItem value="triciclo">Triciclo</SelectItem>
+                    <SelectItem value="quadriciclo">Quadriciclo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex gap-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setIsAddModalOpen(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Adicionar
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-app">
@@ -480,8 +697,8 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {vehicles.map((vehicle) => (
-            <Card key={vehicle.id} className="relative overflow-hidden hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
+            <Card key={vehicle.id} className="border-0 shadow-lg">
+              <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-primary/10 rounded-lg">
@@ -494,18 +711,38 @@ const Dashboard = () => {
                       </p>
                     </div>
                   </div>
-                  
-                  <Badge className={getStatusColor(vehicle.status)}>
-                    {getStatusText(vehicle.status)}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={getStatusColor(vehicle.status)}>
+                      {getStatusText(vehicle.status)}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteConfirmForId(vehicle.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              
-              <CardContent>
+              <CardContent className="space-y-4">
                 {vehicle.status === "disponivel" && (
-                  <Dialog>
+                  <Dialog open={isRentalModalOpen && selectedVehicle?.id === vehicle.id} 
+                          onOpenChange={(open) => {
+                            if (!open) {
+                              setIsRentalModalOpen(false);
+                              setSelectedVehicle(null);
+                            }
+                          }}>
                     <DialogTrigger asChild>
-                      <Button className="w-full" variant="default">
+                      <Button 
+                        className="w-full" 
+                        onClick={() => {
+                          setSelectedVehicle(vehicle);
+                          setIsRentalModalOpen(true);
+                        }}
+                      >
                         <Play className="w-4 h-4 mr-2" />
                         Iniciar Aluguel
                       </Button>
@@ -514,44 +751,42 @@ const Dashboard = () => {
                       <DialogHeader>
                         <DialogTitle>Iniciar Aluguel - {vehicle.name}</DialogTitle>
                         <DialogDescription>
-                          Configure o tempo inicial do aluguel
+                          Selecione o tempo inicial do aluguel
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                          <Button
-                            variant="outline"
-                            onClick={() => handleStartRental(vehicle, 30)}
-                            className="h-20 flex-col"
-                          >
-                            <Clock className="w-6 h-6 mb-2" />
-                            30 min
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => handleStartRental(vehicle, 60)}
-                            className="h-20 flex-col"
-                          >
-                            <Clock className="w-6 h-6 mb-2" />
-                            1 hora
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => handleStartRental(vehicle, 120)}
-                            className="h-20 flex-col"
-                          >
-                            <Clock className="w-6 h-6 mb-2" />
-                            2 horas
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => handleStartRental(vehicle, 180)}
-                            className="h-20 flex-col"
-                          >
-                            <Clock className="w-6 h-6 mb-2" />
-                            3 horas
-                          </Button>
-                        </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => handleStartRental(vehicle, 30)}
+                          className="h-20 flex-col"
+                        >
+                          <Clock className="w-6 h-6 mb-2" />
+                          30 min
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleStartRental(vehicle, 60)}
+                          className="h-20 flex-col"
+                        >
+                          <Clock className="w-6 h-6 mb-2" />
+                          1 hora
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleStartRental(vehicle, 120)}
+                          className="h-20 flex-col"
+                        >
+                          <Clock className="w-6 h-6 mb-2" />
+                          2 horas
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => handleStartRental(vehicle, 180)}
+                          className="h-20 flex-col"
+                        >
+                          <Clock className="w-6 h-6 mb-2" />
+                          3 horas
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
@@ -717,7 +952,37 @@ const Dashboard = () => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { const v = vehicles.find(v => v.id === endConfirmForId); if (v) handleEndRental(v); setEndConfirmForId(null); }}>Finalizar</AlertDialogAction>
+            <AlertDialogAction onClick={() => { 
+              const v = vehicles.find(v => v.id === endConfirmForId); 
+              if (v) handleEndRental(v); 
+              setEndConfirmForId(null); 
+            }}>
+              Finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmação de Remoção */}
+      <AlertDialog open={!!deleteConfirmForId} onOpenChange={(open) => { if (!open) setDeleteConfirmForId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover veículo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. O veículo será removido permanentemente da sua frota.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => { 
+                if (deleteConfirmForId) handleDeleteVehicle(deleteConfirmForId); 
+                setDeleteConfirmForId(null); 
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
