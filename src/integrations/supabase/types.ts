@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      rentals: {
+        Row: {
+          access_code: string
+          actual_end_time: string | null
+          created_at: string | null
+          end_time: string
+          id: string
+          shop_id: string
+          start_time: string
+          status: string
+          total_cost: number | null
+          vehicle_id: string
+        }
+        Insert: {
+          access_code?: string
+          actual_end_time?: string | null
+          created_at?: string | null
+          end_time: string
+          id?: string
+          shop_id: string
+          start_time: string
+          status?: string
+          total_cost?: number | null
+          vehicle_id: string
+        }
+        Update: {
+          access_code?: string
+          actual_end_time?: string | null
+          created_at?: string | null
+          end_time?: string
+          id?: string
+          shop_id?: string
+          start_time?: string
+          status?: string
+          total_cost?: number | null
+          vehicle_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rentals_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rentals_vehicle_id_fkey"
+            columns: ["vehicle_id"]
+            isOneToOne: false
+            referencedRelation: "vehicles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shops: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          price_per_minute: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          price_per_minute?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          price_per_minute?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vehicles: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          shop_id: string
+          status: string
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          shop_id: string
+          status?: string
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          shop_id?: string
+          status?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
