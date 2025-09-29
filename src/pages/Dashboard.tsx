@@ -23,6 +23,11 @@ import {
 type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
 type VehicleStatus = "disponivel" | "alugado" | "manutencao";
 
+interface PricingConfig {
+  pricePerMinute: number;
+  additionalTimePrice: number;
+}
+
 interface Vehicle {
   id: string;
   name: string;
@@ -35,7 +40,24 @@ interface Vehicle {
   };
 }
 
+interface RentalReport {
+  vehicleName: string;
+  startTime: Date;
+  endTime: Date;
+  totalMinutes: number;
+  pricePerMinute: number;
+  totalAmount: number;
+}
+
 const Dashboard = () => {
+  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({
+    pricePerMinute: 1.0, // R$ 1,00 por minuto
+    additionalTimePrice: 1.0 // R$ 1,00 por minuto adicional
+  });
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
+  const [rentalReport, setRentalReport] = useState<RentalReport | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
   const [vehicles, setVehicles] = useState<Vehicle[]>([
     {
       id: "1",
@@ -99,6 +121,24 @@ const Dashboard = () => {
   };
 
   const handleEndRental = (vehicle: Vehicle) => {
+    if (!vehicle.currentRental) return;
+    
+    const endTime = new Date();
+    const totalMinutes = Math.ceil((endTime.getTime() - vehicle.currentRental.startTime.getTime()) / (1000 * 60));
+    const totalAmount = totalMinutes * pricingConfig.pricePerMinute;
+    
+    const report: RentalReport = {
+      vehicleName: vehicle.name,
+      startTime: vehicle.currentRental.startTime,
+      endTime,
+      totalMinutes,
+      pricePerMinute: pricingConfig.pricePerMinute,
+      totalAmount
+    };
+    
+    setRentalReport(report);
+    setIsReportModalOpen(true);
+    
     const updatedVehicle = {
       ...vehicle,
       status: "disponivel" as VehicleStatus,
@@ -106,6 +146,17 @@ const Dashboard = () => {
     };
     
     setVehicles(vehicles.map(v => v.id === vehicle.id ? updatedVehicle : v));
+  };
+
+  const handleUpdatePricing = (formData: FormData) => {
+    const pricePerMinute = parseFloat(formData.get("pricePerMinute") as string);
+    const additionalTimePrice = parseFloat(formData.get("additionalTimePrice") as string);
+    
+    setPricingConfig({
+      pricePerMinute,
+      additionalTimePrice
+    });
+    setIsPricingModalOpen(false);
   };
 
   const getStatusColor = (status: VehicleStatus) => {
@@ -146,10 +197,74 @@ const Dashboard = () => {
               </div>
             </div>
             
-            <Button variant="outline" size="sm">
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+            <div className="flex items-center gap-2">
+              <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Settings className="w-4 h-4 mr-2" />
+                    Preços
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Configurar Preços</DialogTitle>
+                    <DialogDescription>
+                      Defina os valores para aluguel e tempo adicional
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.currentTarget);
+                    handleUpdatePricing(formData);
+                  }} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="pricePerMinute">Preço por minuto (R$)</Label>
+                      <Input
+                        id="pricePerMinute"
+                        name="pricePerMinute"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        defaultValue={pricingConfig.pricePerMinute}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="additionalTimePrice">Preço tempo adicional (R$/min)</Label>
+                      <Input
+                        id="additionalTimePrice"
+                        name="additionalTimePrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        defaultValue={pricingConfig.additionalTimePrice}
+                        required
+                      />
+                    </div>
+                    
+                    <div className="flex gap-3 pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="flex-1"
+                        onClick={() => setIsPricingModalOpen(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button type="submit" className="flex-1">
+                        Salvar
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+              
+              <Button variant="outline" size="sm">
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -386,6 +501,76 @@ const Dashboard = () => {
           ))}
         </div>
       </div>
+
+      {/* Relatório de Finalização */}
+      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Relatório de Aluguel</DialogTitle>
+            <DialogDescription>
+              Resumo do aluguel finalizado
+            </DialogDescription>
+          </DialogHeader>
+          {rentalReport && (
+            <div className="space-y-4">
+              <div className="border rounded-lg p-4 space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Veículo:</span>
+                  <span className="font-medium">{rentalReport.vehicleName}</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Início:</span>
+                  <span className="font-medium">
+                    {rentalReport.startTime.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Fim:</span>
+                  <span className="font-medium">
+                    {rentalReport.endTime.toLocaleString('pt-BR')}
+                  </span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Tempo total:</span>
+                  <span className="font-medium">{rentalReport.totalMinutes} minutos</span>
+                </div>
+                
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Preço/minuto:</span>
+                  <span className="font-medium">
+                    R$ {rentalReport.pricePerMinute.toFixed(2)}
+                  </span>
+                </div>
+                
+                <div className="border-t pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium">Total a pagar:</span>
+                    <span className="text-2xl font-bold text-primary">
+                      R$ {rentalReport.totalAmount.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground">
+                  Pagamento deve ser realizado na loja
+                </p>
+              </div>
+              
+              <Button 
+                onClick={() => setIsReportModalOpen(false)}
+                className="w-full"
+              >
+                Fechar Relatório
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
