@@ -996,7 +996,12 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">Tempo restante:</span>
                       <span className="font-mono font-medium">
-                        {Math.max(0, Math.floor((vehicle.currentRental.endTime.getTime() - Date.now()) / (1000 * 60)))} min
+                        {(() => {
+                          const totalMs = Math.max(0, vehicle.currentRental.endTime.getTime() - Date.now());
+                          const minutes = Math.floor(totalMs / (1000 * 60));
+                          const seconds = Math.floor((totalMs % (1000 * 60)) / 1000);
+                          return `${minutes} min ${seconds} seg`;
+                        })()}
                       </span>
                     </div>
                     
