@@ -63,23 +63,10 @@ const ClientTimer = () => {
       
       const { data, error } = await supabase
         .from('rentals')
-        .select(`
-          id,
-          start_time,
-          end_time,
-          status,
-          access_code,
-          vehicles!inner(
-            name,
-            type
-          ),
-          shops!inner(
-            name
-          )
-        `)
+        .select('id, start_time, end_time, status, access_code')
         .eq('access_code', rentalId)
         .eq('status', 'Ativo')
-        .single();
+        .maybeSingle();
 
       if (error || !data) {
         console.error('Rental not found:', error);
@@ -89,13 +76,13 @@ const ClientTimer = () => {
 
       const rentalData: RentalData = {
         id: data.id,
-        vehicle_name: data.vehicles.name,
-        vehicle_type: data.vehicles.type,
+        vehicle_name: 'Veículo',
+        vehicle_type: 'bicicleta',
         start_time: data.start_time,
         end_time: data.end_time,
-        store_name: data.shops.name,
-        store_contact: "(13) 99999-9999", // Placeholder
-        store_address: "Baixada Santista, SP", // Placeholder
+        store_name: 'Loja parceira',
+        store_contact: undefined,
+        store_address: undefined,
         status: data.status,
         access_code: data.access_code
       };
