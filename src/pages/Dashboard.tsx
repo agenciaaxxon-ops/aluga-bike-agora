@@ -102,6 +102,27 @@ const Dashboard = () => {
   const [endConfirmForId, setEndConfirmForId] = useState<string | null>(null);
   const [deleteConfirmForId, setDeleteConfirmForId] = useState<string | null>(null);
 
+  // Tick para atualização visual do cronômetro
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (totalSeconds: number) => {
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return `${hours.toString().padStart(2, '0')}:${minutes
+        .toString()
+        .padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds
+      .toString()
+      .padStart(2, '0')}`;
+  };
+
   // Carregar dados do usuário e veículos
   useEffect(() => {
     loadUserData();
@@ -1039,10 +1060,9 @@ const Dashboard = () => {
                       <span className="text-muted-foreground">Tempo restante:</span>
                       <span className="font-mono font-medium">
                         {(() => {
-                          const totalMs = Math.max(0, vehicle.currentRental.endTime.getTime() - Date.now());
-                          const minutes = Math.floor(totalMs / (1000 * 60));
-                          const seconds = Math.floor((totalMs % (1000 * 60)) / 1000);
-                          return `${minutes} min ${seconds} seg`;
+                          const totalMs = Math.max(0, vehicle.currentRental.endTime.getTime() - nowTick);
+                          const totalSeconds = Math.floor(totalMs / 1000);
+                          return formatTime(totalSeconds);
                         })()}
                       </span>
                     </div>
