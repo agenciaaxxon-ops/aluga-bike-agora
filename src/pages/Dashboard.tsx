@@ -132,6 +132,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (!userShop) return;
 
+    console.log('Setting up realtime listener for shop:', userShop.id);
+
     const channel = supabase
       .channel('rentals-changes')
       .on(
@@ -143,12 +145,13 @@ const Dashboard = () => {
           filter: `shop_id=eq.${userShop.id}`
         },
         (payload) => {
-          console.log('Rental updated:', payload);
-          // Atualizar o veículo correspondente
+          console.log('🔄 Rental updated (realtime):', payload);
           const updatedRental = payload.new as any;
-          setVehicles(prevVehicles => 
-            prevVehicles.map(vehicle => {
+          
+          setVehicles(prevVehicles => {
+            const updated = prevVehicles.map(vehicle => {
               if (vehicle.currentRental?.id === updatedRental.id) {
+                console.log('✅ Updating vehicle:', vehicle.name, 'New end time:', updatedRental.end_time);
                 return {
                   ...vehicle,
                   currentRental: {
@@ -159,13 +162,17 @@ const Dashboard = () => {
                 };
               }
               return vehicle;
-            })
-          );
+            });
+            return updated;
+          });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Realtime subscription status:', status);
+      });
 
     return () => {
+      console.log('Removing realtime channel');
       supabase.removeChannel(channel);
     };
   }, [userShop]);
