@@ -137,20 +137,31 @@ const ClientTimer = () => {
     if (!rental) return;
     
     try {
-      const newEndTime = new Date(rental.end_time);
-      newEndTime.setTime(newEndTime.getTime() + additionalMinutes * 60 * 1000);
+      console.log('🚀 Calling extend_rental_time function with:', { access_code: rental.access_code, minutes: additionalMinutes });
       
-      const { error } = await supabase
-        .from('rentals')
-        .update({ end_time: newEndTime.toISOString() })
-        .eq('id', rental.id);
+      const { data, error } = await supabase.functions.invoke("extend_rental_time", {
+        body: { 
+          access_code: rental.access_code, 
+          minutes: additionalMinutes 
+        }
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Error from edge function:', error);
+        throw error;
+      }
 
-      // Atualizar estado local
+      if (!data || !data.rental) {
+        console.error('❌ No rental data returned');
+        throw new Error('Resposta inválida do servidor');
+      }
+
+      console.log('✅ Rental extended successfully:', data.rental);
+
+      // Atualizar estado local com os dados retornados
       setRental({
         ...rental,
-        end_time: newEndTime.toISOString()
+        end_time: data.rental.end_time
       });
       
       setIsExpired(false);
@@ -161,11 +172,11 @@ const ClientTimer = () => {
         description: `+${additionalMinutes} minutos adicionados ao seu aluguel` 
       });
       
-    } catch (error) {
-      console.error('Erro ao adicionar tempo:', error);
+    } catch (error: any) {
+      console.error('❌ Erro ao adicionar tempo:', error);
       toast({ 
         title: "Erro ao adicionar tempo", 
-        description: "Tente novamente ou entre em contato com a loja",
+        description: error.message || "Tente novamente ou entre em contato com a loja",
         variant: "destructive" 
       });
     }
