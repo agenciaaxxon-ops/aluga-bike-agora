@@ -107,6 +107,48 @@ const Dashboard = () => {
     loadUserData();
   }, []);
 
+  // Escutar mudanças em tempo real nos aluguéis
+  useEffect(() => {
+    if (!userShop) return;
+
+    const channel = supabase
+      .channel('rentals-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rentals',
+          filter: `shop_id=eq.${userShop.id}`
+        },
+        (payload) => {
+          console.log('Rental updated:', payload);
+          // Atualizar o veículo correspondente
+          const updatedRental = payload.new as any;
+          setVehicles(prevVehicles => 
+            prevVehicles.map(vehicle => {
+              if (vehicle.currentRental?.id === updatedRental.id) {
+                return {
+                  ...vehicle,
+                  currentRental: {
+                    ...vehicle.currentRental,
+                    endTime: new Date(updatedRental.end_time),
+                    duration: Math.ceil((new Date(updatedRental.end_time).getTime() - new Date(updatedRental.start_time).getTime()) / (1000 * 60))
+                  }
+                };
+              }
+              return vehicle;
+            })
+          );
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userShop]);
+
   const loadUserData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
