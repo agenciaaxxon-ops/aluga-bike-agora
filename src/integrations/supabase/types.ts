@@ -42,6 +42,8 @@ export type Database = {
         Row: {
           access_code: string
           actual_end_time: string | null
+          client_name: string | null
+          client_phone: string | null
           created_at: string | null
           end_time: string
           id: string
@@ -49,11 +51,14 @@ export type Database = {
           start_time: string
           status: string
           total_cost: number | null
-          vehicle_id: string
+          vehicle_id: string | null
+          vehicle_type: string | null
         }
         Insert: {
           access_code?: string
           actual_end_time?: string | null
+          client_name?: string | null
+          client_phone?: string | null
           created_at?: string | null
           end_time: string
           id?: string
@@ -61,11 +66,14 @@ export type Database = {
           start_time: string
           status?: string
           total_cost?: number | null
-          vehicle_id: string
+          vehicle_id?: string | null
+          vehicle_type?: string | null
         }
         Update: {
           access_code?: string
           actual_end_time?: string | null
+          client_name?: string | null
+          client_phone?: string | null
           created_at?: string | null
           end_time?: string
           id?: string
@@ -73,7 +81,8 @@ export type Database = {
           start_time?: string
           status?: string
           total_cost?: number | null
-          vehicle_id?: string
+          vehicle_id?: string | null
+          vehicle_type?: string | null
         }
         Relationships: [
           {

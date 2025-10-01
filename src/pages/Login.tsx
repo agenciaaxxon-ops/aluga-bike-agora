@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/use-toast";
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("login");
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -38,10 +39,10 @@ const Login = () => {
       });
 
       if (error) {
-        toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
+        toast({ title: "Erro ao entrar", description: "Verifique seu e-mail e senha.", variant: "destructive" });
       } else {
         toast({ title: "Login realizado com sucesso" });
-        navigate("/dashboard");
+        // O App.tsx cuidará do redirecionamento
       }
     } catch (err: any) {
       toast({ title: "Dados inválidos", description: err?.message ?? "Verifique os campos", variant: "destructive" });
@@ -59,30 +60,36 @@ const Login = () => {
       emailSchema.parse(registerEmail);
       passwordSchema.parse(registerPassword);
 
-      const redirectUrl = `${window.location.origin}/`;
-
       const { data, error } = await supabase.auth.signUp({
         email: registerEmail,
         password: registerPassword,
         options: {
-          emailRedirectTo: redirectUrl,
           data: { store_name: storeName, owner_name: ownerName },
         },
       });
 
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
-      } else {
-        if (data.session) {
-          toast({ title: "Cadastro realizado!" });
-          navigate("/dashboard");
-        } else {
-          toast({
-            title: "Confirme seu email",
-            description: "Enviamos um link de confirmação para concluir o cadastro.",
-          });
-        }
+      } else if (data.user) {
+        // *** INÍCIO DA MUDANÇA ***
+        // 1. Desloga o usuário para não entrar direto no dashboard
+        await supabase.auth.signOut(); 
+
+        // 2. Mostra a mensagem de sucesso
+        toast({
+          title: "Cadastro concluído!",
+          description: "Pode prosseguir com o login.",
+        });
+
+        // 3. Muda para a aba de login e limpa os campos para uma melhor experiência
+        setActiveTab("login");
+        setStoreName("");
+        setOwnerName("");
+        setRegisterEmail("");
+        setRegisterPassword("");
+        // *** FIM DA MUDANÇA ***
       }
+
     } catch (err: any) {
       toast({ title: "Dados inválidos", description: err?.message ?? "Verifique os campos", variant: "destructive" });
     } finally {
@@ -92,15 +99,7 @@ const Login = () => {
 
   useEffect(() => {
     document.title = "Login | Aluga Bike Baixada";
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) navigate("/dashboard");
-    });
-    // Checagem inicial após configurar o listener
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) navigate("/dashboard");
-    });
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-app flex items-center justify-center p-4">
@@ -123,7 +122,7 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="login">Entrar</TabsTrigger>
                 <TabsTrigger value="register">Cadastrar</TabsTrigger>

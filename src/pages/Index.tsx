@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Bike, Store, Clock, Users, MapPin, ArrowRight } from "lucide-react";
+import { Bike, Store, Clock, MapPin, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+
 const Index = () => {
-  return <div className="min-h-screen bg-app">
+  return (
+    <div className="min-h-screen bg-app">
       {/* Hero Section */}
       <div className="bg-app-gradient text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -12,11 +14,10 @@ const Index = () => {
             <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-3xl mb-8">
               <Bike className="w-10 h-10 text-white" />
             </div>
-            <h1 className="text-5xl font-bold mb-6">
-              Aluga Bike Baixada
-            </h1>
+            <h1 className="text-5xl font-bold mb-6">Aluga Bike Baixada</h1>
             <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Sistema completo para gerenciamento de aluguel de bicicletas, triciclos e quadriciclos na Baixada Santista
+              Sistema completo para gerenciamento de aluguel de bicicletas,
+              triciclos e quadriciclos na Baixada Santista
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/login">
@@ -26,7 +27,6 @@ const Index = () => {
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
-              
             </div>
           </div>
         </div>
@@ -322,6 +322,7 @@ const Index = () => {
           </div>
         </div>
       </footer>
-    </div>;
+    </div>
+  );
 };
 export default Index;

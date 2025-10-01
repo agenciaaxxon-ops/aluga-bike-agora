@@ -10,30 +10,51 @@ import Dashboard from "./pages/Dashboard";
 import ClientTimer from "./pages/ClientTimer";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
+import { Session } from '@supabase/supabase-js';
 
 const queryClient = new QueryClient();
 
-type ProtectedRouteProps = { children: React.ReactNode };
-
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const AppRoutes = () => {
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthenticated(!!session);
-      setLoading(false);
-    });
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthenticated(!!session);
+      setSession(session);
       setLoading(false);
     });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) return null;
-  return authenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
+  if (loading) {
+    return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
+  }
+
+  return (
+    <Routes>
+      <Route
+        path="/"
+        element={session ? <Navigate to="/dashboard" replace /> : <Index />}
+      />
+      <Route
+        path="/login"
+        element={session ? <Navigate to="/dashboard" replace /> : <Login />}
+      />
+      <Route
+        path="/dashboard"
+        element={session ? <Dashboard /> : <Navigate to="/login" replace />}
+      />
+      
+      <Route path="/cliente/:rentalId" element={<ClientTimer />} />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -41,14 +62,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/cliente/:rentalId" element={<ClientTimer />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppRoutes />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

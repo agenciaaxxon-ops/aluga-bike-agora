@@ -36,6 +36,9 @@ const ClientTimer = () => {
   const [rental, setRental] = useState<RentalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  
+  // Estado para controlar a abertura do modal
+  const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
 
   useEffect(() => {
     if (rentalId) {
@@ -44,18 +47,31 @@ const ClientTimer = () => {
   }, [rentalId]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (rental && !isExpired) {
-      interval = setInterval(() => {
-        calculateTimeLeft();
-      }, 1000);
-    }
+    if (!rental) return;
 
-    return () => {
-      if (interval) clearInterval(interval);
+    const calculateTime = () => {
+      const now = new Date().getTime();
+      const endTime = new Date(rental.end_time).getTime();
+      const diff = endTime - now;
+      
+      setTimeLeft(diff / 1000);
+      
+      if (diff <= 0) {
+        setIsExpired(true);
+      } else {
+        setIsExpired(false);
+        if (diff / (1000 * 60) <= 10) {
+          setShowWarning(true);
+        } else {
+          setShowWarning(false);
+        }
+      }
     };
-  }, [rental, isExpired]);
+    
+    calculateTime();
+    const interval = setInterval(calculateTime, 1000);
+    return () => clearInterval(interval);
+  }, [rental]);
 
   const loadRentalData = async () => {
     try {
@@ -63,7 +79,7 @@ const ClientTimer = () => {
       
       const { data, error } = await supabase
         .from('rentals')
-        .select('id, start_time, end_time, status, access_code')
+        .select('*, shop:shops(name)')
         .eq('access_code', rentalId)
         .eq('status', 'Ativo')
         .maybeSingle();
@@ -74,21 +90,23 @@ const ClientTimer = () => {
         return;
       }
 
+      // @ts-ignore
+      const storeName = Array.isArray(data.shop) ? data.shop[0]?.name : data.shop?.name || 'Loja Parceira';
+
       const rentalData: RentalData = {
         id: data.id,
-        vehicle_name: 'Veículo',
-        vehicle_type: 'bicicleta',
+        // @ts-ignore
+        vehicle_name: data.vehicle_type ? data.vehicle_type.charAt(0).toUpperCase() + data.vehicle_type.slice(1) : 'Veículo',
+        // @ts-ignore
+        vehicle_type: data.vehicle_type || 'veículo',
         start_time: data.start_time,
         end_time: data.end_time,
-        store_name: 'Loja parceira',
-        store_contact: undefined,
-        store_address: undefined,
+        store_name: storeName,
         status: data.status,
         access_code: data.access_code
       };
 
       setRental(rentalData);
-      calculateTimeLeft();
       
     } catch (error) {
       console.error('Erro ao carregar aluguel:', error);
@@ -98,87 +116,49 @@ const ClientTimer = () => {
     }
   };
 
-  const calculateTimeLeft = () => {
-    if (!rental) return;
-    
-    const now = new Date().getTime();
-    const endTime = new Date(rental.end_time).getTime();
-    const diff = endTime - now;
-    
-    if (diff <= 0) {
-      setIsExpired(true);
-      setTimeLeft(0);
-      return;
-    }
-    
-    const minutes = Math.floor(diff / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    setTimeLeft(minutes * 60 + seconds);
-    
-    // Mostrar aviso quando restam 10 minutos ou menos
-    if (minutes <= 10 && !showWarning) {
-      setShowWarning(true);
-    }
-  };
-
   const formatTime = (totalSeconds: number) => {
+    const isOvertime = totalSeconds < 0;
+    if (isOvertime) totalSeconds = Math.abs(totalSeconds);
+
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+    const seconds = Math.floor(totalSeconds % 60);
     
-    if (hours > 0) {
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    const timeString = hours > 0
+      ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+      : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      
+    return isOvertime ? `-${timeString}` : timeString;
   };
 
   const addTime = async (additionalMinutes: number) => {
     if (!rental) return;
     
     try {
-      console.log('🚀 Calling extend_rental_time function with:', { access_code: rental.access_code, minutes: additionalMinutes });
-      
-      const { data, error } = await supabase.functions.invoke("extend_rental_time", {
+      const { error } = await supabase.functions.invoke("extend_rental_time", {
         body: { 
           access_code: rental.access_code, 
           minutes: additionalMinutes 
         }
       });
 
-      if (error) {
-        console.error('❌ Error from edge function:', error);
-        throw error;
-      }
-
-      if (!data || !data.rental) {
-        console.error('❌ No rental data returned');
-        throw new Error('Resposta inválida do servidor');
-      }
-
-      console.log('✅ Rental extended successfully:', data.rental);
-
-      // Atualizar estado local com os dados retornados
-      setRental({
-        ...rental,
-        end_time: data.rental.end_time
-      });
+      if (error) throw error;
       
-      setIsExpired(false);
-      setShowWarning(false);
+      const newEndTime = new Date(new Date(rental.end_time).getTime() + additionalMinutes * 60 * 1000);
+      setRental(prev => prev ? { ...prev, end_time: newEndTime.toISOString() } : null);
       
       toast({ 
-        title: `Tempo adicionado!`, 
-        description: `+${additionalMinutes} minutos adicionados ao seu aluguel` 
+        title: `+${additionalMinutes} minutos adicionados!`,
       });
       
     } catch (error: any) {
-      console.error('❌ Erro ao adicionar tempo:', error);
       toast({ 
         title: "Erro ao adicionar tempo", 
         description: error.message || "Tente novamente ou entre em contato com a loja",
         variant: "destructive" 
       });
+    } finally {
+      setIsAddTimeModalOpen(false);
     }
   };
 
@@ -215,16 +195,14 @@ const ClientTimer = () => {
   return (
     <div className="min-h-screen bg-app p-4">
       <div className="max-w-md mx-auto">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-app-gradient rounded-2xl mb-4 shadow-emerald">
             <Bike className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-1">Aluga Bike Baixada</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-1">{rental.store_name}</h1>
           <p className="text-muted-foreground">Acompanhe seu aluguel</p>
         </div>
 
-        {/* Vehicle Info */}
         <Card className="mb-6 border-0 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -234,15 +212,14 @@ const ClientTimer = () => {
                   {rental.vehicle_type}
                 </p>
               </div>
-              <Badge className={`${isExpired ? 'bg-destructive' : 'bg-vehicle-rented'} text-white`}>
+              <Badge className={`${isExpired ? 'bg-destructive' : 'bg-primary'} text-primary-foreground`}>
                 {isExpired ? 'Expirado' : 'Em uso'}
               </Badge>
             </div>
           </CardHeader>
         </Card>
 
-        {/* Timer */}
-        <Card className={`mb-6 border-0 shadow-lg ${isExpired ? 'border-destructive' : showWarning ? 'border-warning' : ''}`}>
+        <Card className={`mb-6 border-0 shadow-lg`}>
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="mb-4">
@@ -250,7 +227,7 @@ const ClientTimer = () => {
                   isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-primary'
                 }`} />
                 <h2 className="text-lg font-medium text-muted-foreground">
-                  {isExpired ? 'Tempo Esgotado' : 'Tempo Restante'}
+                  {isExpired ? 'Tempo Excedido' : 'Tempo Restante'}
                 </h2>
               </div>
               
@@ -287,8 +264,7 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        {/* Add Time Button */}
-        <Dialog>
+        <Dialog open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
           <DialogTrigger asChild>
             <Button className="w-full mb-6" size="lg">
               <Plus className="w-5 h-5 mr-2" />
@@ -299,51 +275,18 @@ const ClientTimer = () => {
             <DialogHeader>
               <DialogTitle>Adicionar Tempo</DialogTitle>
               <DialogDescription>
-                Selecione quanto tempo deseja adicionar ao seu aluguel
+                Selecione quanto tempo deseja adicionar ao seu aluguel.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => addTime(15)}
-                className="h-20 flex-col"
-              >
-                <Clock className="w-6 h-6 mb-2" />
-                <span>+15 min</span>
-                <span className="text-xs text-muted-foreground">R$ 7,50</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => addTime(30)}
-                className="h-20 flex-col"
-              >
-                <Clock className="w-6 h-6 mb-2" />
-                <span>+30 min</span>
-                <span className="text-xs text-muted-foreground">R$ 15,00</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => addTime(60)}
-                className="h-20 flex-col"
-              >
-                <Clock className="w-6 h-6 mb-2" />
-                <span>+1 hora</span>
-                <span className="text-xs text-muted-foreground">R$ 30,00</span>
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => addTime(120)}
-                className="h-20 flex-col"
-              >
-                <Clock className="w-6 h-6 mb-2" />
-                <span>+2 horas</span>
-                <span className="text-xs text-muted-foreground">R$ 60,00</span>
-              </Button>
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <Button variant="outline" onClick={() => addTime(15)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+15 min</span></Button>
+              <Button variant="outline" onClick={() => addTime(30)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+30 min</span></Button>
+              <Button variant="outline" onClick={() => addTime(60)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+1 hora</span></Button>
+              <Button variant="outline" onClick={() => addTime(120)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+2 horas</span></Button>
             </div>
           </DialogContent>
         </Dialog>
 
-        {/* Store Info */}
         <Card className="border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Informações da Loja</CardTitle>
@@ -381,7 +324,6 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        {/* Rental Info */}
         <Card className="mt-6 border-0 shadow-lg">
           <CardHeader>
             <CardTitle className="text-lg">Detalhes do Aluguel</CardTitle>
