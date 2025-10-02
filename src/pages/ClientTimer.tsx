@@ -2,7 +2,14 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger 
+} from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { 
   Bike, 
@@ -147,8 +154,11 @@ const ClientTimer = () => {
       const newEndTime = new Date(new Date(rental.end_time).getTime() + additionalMinutes * 60 * 1000);
       setRental(prev => prev ? { ...prev, end_time: newEndTime.toISOString() } : null);
       
+      // Toast com maior duração e ícone de sucesso
       toast({ 
-        title: `+${additionalMinutes} minutos adicionados!`,
+        title: "✓ Tempo adicionado com sucesso!",
+        description: `+${additionalMinutes} minutos foram adicionados ao seu aluguel`,
+        duration: 5000,
       });
       
     } catch (error: any) {
@@ -264,28 +274,56 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        <Dialog open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
-          <DialogTrigger asChild>
+        <Sheet open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
+          <SheetTrigger asChild>
             <Button className="w-full mb-6" size="lg">
               <Plus className="w-5 h-5 mr-2" />
               Adicionar Mais Tempo
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Tempo</DialogTitle>
-              <DialogDescription>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="rounded-t-3xl">
+            <SheetHeader className="text-left mb-6">
+              <SheetTitle className="text-2xl">Adicionar Tempo</SheetTitle>
+              <SheetDescription>
                 Selecione quanto tempo deseja adicionar ao seu aluguel.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <Button variant="outline" onClick={() => addTime(15)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+15 min</span></Button>
-              <Button variant="outline" onClick={() => addTime(30)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+30 min</span></Button>
-              <Button variant="outline" onClick={() => addTime(60)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+1 hora</span></Button>
-              <Button variant="outline" onClick={() => addTime(120)} className="h-20 flex-col"><Clock className="w-6 h-6 mb-2" /><span>+2 horas</span></Button>
+              </SheetDescription>
+            </SheetHeader>
+            <div className="grid grid-cols-2 gap-4 pb-6">
+              <Button 
+                variant="outline" 
+                onClick={() => addTime(15)} 
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all"
+              >
+                <Clock className="w-8 h-8" />
+                <span className="font-semibold">+15 min</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => addTime(30)} 
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all"
+              >
+                <Clock className="w-8 h-8" />
+                <span className="font-semibold">+30 min</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => addTime(60)} 
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all"
+              >
+                <Clock className="w-8 h-8" />
+                <span className="font-semibold">+1 hora</span>
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => addTime(120)} 
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all"
+              >
+                <Clock className="w-8 h-8" />
+                <span className="font-semibold">+2 horas</span>
+              </Button>
             </div>
-          </DialogContent>
-        </Dialog>
+          </SheetContent>
+        </Sheet>
 
         <Card className="border-0 shadow-lg">
           <CardHeader>

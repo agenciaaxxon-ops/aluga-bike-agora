@@ -17,7 +17,10 @@ import {
   Settings,
   User as UserIcon,
   Phone,
-  AlertTriangle
+  AlertTriangle,
+  Printer,
+  Share2,
+  DollarSign
 } from "lucide-react";
 import QRCode from "qrcode";
 import { toast } from "@/hooks/use-toast";
@@ -299,6 +302,14 @@ const Dashboard = () => {
             {rentals.map((rental) => {
               const timeLeftSeconds = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 1000);
               const isOvertime = timeLeftSeconds < 0;
+              
+              // Calcular custo atual em tempo real
+              const startTime = new Date(rental.start_time).getTime();
+              const currentTime = nowTick;
+              const minutesElapsed = Math.ceil((currentTime - startTime) / (1000 * 60));
+              const pricePerMinute = rental.vehicle_type ? pricingConfig[rental.vehicle_type as VehicleType] : 0;
+              const currentCost = minutesElapsed * pricePerMinute;
+              
               return (
                 <Card key={rental.id} className="border-0 shadow-lg flex flex-col">
                   <CardHeader>
@@ -312,6 +323,16 @@ const Dashboard = () => {
                   <CardContent className="space-y-3 flex-grow flex flex-col justify-end">
                     {rental.client_phone && <div className="flex items-center text-sm text-muted-foreground"><Phone className="w-4 h-4 mr-2" /><span>{rental.client_phone}</span></div>}
                     <div className={`flex items-center justify-between text-sm ${isOvertime ? 'text-destructive font-bold' : ''}`}><span className="text-muted-foreground">Tempo:</span><span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span></div>
+                    
+                    {/* Badge de custo em tempo real */}
+                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-muted-foreground">Custo atual:</span>
+                      </div>
+                      <span className="text-lg font-bold text-primary">R$ {currentCost.toFixed(2)}</span>
+                    </div>
+                    
                     <div className="flex gap-2 pt-2">
                       <Button variant="outline" size="sm" className="flex-1" onClick={() => showQrCode(rental)}><QrCode className="w-4 h-4 mr-1" /> QR Code</Button>
                       <Button variant="destructive" size="sm" className="flex-1" onClick={() => setEndConfirmForId(rental.id)}><Square className="w-4 h-4 mr-2" /> Finalizar</Button>
@@ -333,7 +354,7 @@ const Dashboard = () => {
           <DialogHeader><DialogTitle>Relatório de Finalização</DialogTitle><DialogDescription>Resumo da locação para cobrança.</DialogDescription></DialogHeader>
           {rentalReport && 
             <div className="space-y-4">
-              <div className="border rounded-lg p-4 space-y-3">
+              <div id="rental-report-content" className="border rounded-lg p-4 space-y-3">
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Cliente:</span><span className="font-medium">{rentalReport.clientName}</span></div>
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Veículo:</span><span className="font-medium capitalize">{rentalReport.vehicleType}</span></div>
                 <div className="border-t my-2"></div>
@@ -349,6 +370,31 @@ const Dashboard = () => {
                   </div>
                 </div>
               </div>
+              
+              {/* Botões de ação no relatório */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.print()}
+                  className="flex items-center gap-2"
+                >
+                  <Printer className="w-4 h-4" />
+                  Imprimir
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const text = `*Relatório de Locação*\n\nCliente: ${rentalReport.clientName}\nVeículo: ${rentalReport.vehicleType}\nTempo total: ${rentalReport.totalMinutes} min\n*Total: R$ ${rentalReport.totalAmount.toFixed(2)}*`;
+                    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                    window.open(url, '_blank');
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  WhatsApp
+                </Button>
+              </div>
+              
               <Button onClick={() => setIsReportModalOpen(false)} className="w-full">Fechar</Button>
             </div>
           }

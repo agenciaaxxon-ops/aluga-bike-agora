@@ -17,14 +17,78 @@ const Login = () => {
 
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginEmailError, setLoginEmailError] = useState("");
+  const [loginPasswordError, setLoginPasswordError] = useState("");
 
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
+  const [registerEmailError, setRegisterEmailError] = useState("");
+  const [registerPasswordError, setRegisterPasswordError] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong" | "">("");
 
   const emailSchema = z.string().trim().email("Email inválido").max(255);
   const passwordSchema = z.string().min(6, "A senha deve ter pelo menos 6 caracteres").max(128);
+
+  // Validação em tempo real do email de login
+  const validateLoginEmail = (email: string) => {
+    try {
+      emailSchema.parse(email);
+      setLoginEmailError("");
+      return true;
+    } catch (err: any) {
+      setLoginEmailError(err.errors?.[0]?.message || "Email inválido");
+      return false;
+    }
+  };
+
+  // Validação em tempo real da senha de login
+  const validateLoginPassword = (password: string) => {
+    try {
+      passwordSchema.parse(password);
+      setLoginPasswordError("");
+      return true;
+    } catch (err: any) {
+      setLoginPasswordError(err.errors?.[0]?.message || "Senha inválida");
+      return false;
+    }
+  };
+
+  // Validação em tempo real do email de cadastro
+  const validateRegisterEmail = (email: string) => {
+    try {
+      emailSchema.parse(email);
+      setRegisterEmailError("");
+      return true;
+    } catch (err: any) {
+      setRegisterEmailError(err.errors?.[0]?.message || "Email inválido");
+      return false;
+    }
+  };
+
+  // Validação de força da senha
+  const checkPasswordStrength = (password: string) => {
+    if (password.length === 0) {
+      setPasswordStrength("");
+      return;
+    }
+    
+    if (password.length < 6) {
+      setPasswordStrength("weak");
+    } else if (password.length < 10) {
+      setPasswordStrength("medium");
+    } else {
+      setPasswordStrength("strong");
+    }
+    
+    try {
+      passwordSchema.parse(password);
+      setRegisterPasswordError("");
+    } catch (err: any) {
+      setRegisterPasswordError(err.errors?.[0]?.message || "Senha inválida");
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,12 +202,20 @@ const Login = () => {
                         id="email"
                         type="email"
                         placeholder="seu@email.com"
-                        className="pl-10"
+                        className={`pl-10 ${loginEmailError ? 'border-destructive' : loginEmail && !loginEmailError ? 'border-success' : ''}`}
                         required
                         value={loginEmail}
-                        onChange={(e) => setLoginEmail(e.target.value)}
+                        onChange={(e) => {
+                          setLoginEmail(e.target.value);
+                          if (e.target.value) validateLoginEmail(e.target.value);
+                        }}
+                        onBlur={(e) => validateLoginEmail(e.target.value)}
                       />
+                      {loginEmail && !loginEmailError && (
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-success text-xl">✓</span>
+                      )}
                     </div>
+                    {loginEmailError && <p className="text-xs text-destructive">{loginEmailError}</p>}
                   </div>
                   
                   <div className="space-y-2">
@@ -154,12 +226,20 @@ const Login = () => {
                         id="password"
                         type="password"
                         placeholder="••••••••"
-                        className="pl-10"
+                        className={`pl-10 ${loginPasswordError ? 'border-destructive' : loginPassword && !loginPasswordError ? 'border-success' : ''}`}
                         required
                         value={loginPassword}
-                        onChange={(e) => setLoginPassword(e.target.value)}
+                        onChange={(e) => {
+                          setLoginPassword(e.target.value);
+                          if (e.target.value) validateLoginPassword(e.target.value);
+                        }}
+                        onBlur={(e) => validateLoginPassword(e.target.value)}
                       />
+                      {loginPassword && !loginPasswordError && (
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-success text-xl">✓</span>
+                      )}
                     </div>
+                    {loginPasswordError && <p className="text-xs text-destructive">{loginPasswordError}</p>}
                   </div>
                   
                   <Button 
@@ -215,28 +295,54 @@ const Login = () => {
                         id="registerEmail"
                         type="email"
                         placeholder="contato@minhaloja.com"
-                        className="pl-10"
+                        className={`pl-10 ${registerEmailError ? 'border-destructive' : registerEmail && !registerEmailError ? 'border-success' : ''}`}
                         required
                         value={registerEmail}
-                        onChange={(e) => setRegisterEmail(e.target.value)}
+                        onChange={(e) => {
+                          setRegisterEmail(e.target.value);
+                          if (e.target.value) validateRegisterEmail(e.target.value);
+                        }}
+                        onBlur={(e) => validateRegisterEmail(e.target.value)}
                       />
+                      {registerEmail && !registerEmailError && (
+                        <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-success text-xl">✓</span>
+                      )}
                     </div>
+                    {registerEmailError && <p className="text-xs text-destructive">{registerEmailError}</p>}
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="registerPassword">Senha</Label>
+                    <Label htmlFor="registerPassword">Senha (mínimo 6 caracteres)</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                       <Input
                         id="registerPassword"
                         type="password"
                         placeholder="••••••••"
-                        className="pl-10"
+                        className={`pl-10 ${registerPasswordError ? 'border-destructive' : ''}`}
                         required
                         value={registerPassword}
-                        onChange={(e) => setRegisterPassword(e.target.value)}
+                        onChange={(e) => {
+                          setRegisterPassword(e.target.value);
+                          checkPasswordStrength(e.target.value);
+                        }}
                       />
                     </div>
+                    {registerPasswordError && <p className="text-xs text-destructive">{registerPasswordError}</p>}
+                    
+                    {/* Indicador de força da senha */}
+                    {passwordStrength && (
+                      <div className="space-y-1">
+                        <div className="flex gap-1">
+                          <div className={`h-1 flex-1 rounded ${passwordStrength === "weak" ? "bg-destructive" : passwordStrength === "medium" ? "bg-warning" : "bg-success"}`}></div>
+                          <div className={`h-1 flex-1 rounded ${passwordStrength === "medium" ? "bg-warning" : passwordStrength === "strong" ? "bg-success" : "bg-muted"}`}></div>
+                          <div className={`h-1 flex-1 rounded ${passwordStrength === "strong" ? "bg-success" : "bg-muted"}`}></div>
+                        </div>
+                        <p className={`text-xs ${passwordStrength === "weak" ? "text-destructive" : passwordStrength === "medium" ? "text-warning" : "text-success"}`}>
+                          {passwordStrength === "weak" ? "Senha fraca" : passwordStrength === "medium" ? "Senha média" : "Senha forte"}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   
                   <Button 
