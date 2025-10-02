@@ -46,11 +46,14 @@ export type Database = {
           client_phone: string | null
           created_at: string | null
           end_time: string
+          extension_count: number
           id: string
+          last_extension_at: string | null
           shop_id: string
           start_time: string
           status: string
           total_cost: number | null
+          total_extended_minutes: number
           vehicle_id: string | null
           vehicle_type: string | null
         }
@@ -61,11 +64,14 @@ export type Database = {
           client_phone?: string | null
           created_at?: string | null
           end_time: string
+          extension_count?: number
           id?: string
+          last_extension_at?: string | null
           shop_id: string
           start_time: string
           status?: string
           total_cost?: number | null
+          total_extended_minutes?: number
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
@@ -76,11 +82,14 @@ export type Database = {
           client_phone?: string | null
           created_at?: string | null
           end_time?: string
+          extension_count?: number
           id?: string
+          last_extension_at?: string | null
           shop_id?: string
           start_time?: string
           status?: string
           total_cost?: number | null
+          total_extended_minutes?: number
           vehicle_id?: string | null
           vehicle_type?: string | null
         }
