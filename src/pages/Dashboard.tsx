@@ -237,16 +237,25 @@ const Dashboard = () => {
   
   return (
     <div className="min-h-screen bg-app">
-      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
+      <div className="bg-white border-b shadow-sm sticky top-0 z-10 backdrop-blur-sm bg-white/95 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-app-gradient rounded-xl flex items-center justify-center"><Bike className="w-5 h-5 text-white" /></div>
-              <div><h1 className="text-xl font-bold text-foreground">{userShop?.name || 'Minha Loja'}</h1><p className="text-sm text-muted-foreground">Painel de Gerenciamento</p></div>
+            <div className="flex items-center space-x-3 animate-fade-in">
+              <div className="w-10 h-10 bg-app-gradient rounded-xl flex items-center justify-center shadow-emerald transition-all duration-300 hover:scale-110 hover:shadow-lg">
+                <Bike className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-foreground transition-colors duration-300">{userShop?.name || 'Minha Loja'}</h1>
+                <p className="text-sm text-muted-foreground transition-colors duration-300">Painel de Gerenciamento</p>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 animate-fade-in">
               <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
-                <DialogTrigger asChild><Button variant="outline" size="sm"><Settings className="w-4 h-4 mr-2" /> Preços</Button></DialogTrigger>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <Settings className="w-4 h-4 mr-2" /> Preços
+                  </Button>
+                </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Configurar Preços</DialogTitle><DialogDescription>Defina o valor por minuto para cada tipo de veículo.</DialogDescription></DialogHeader>
                   <form onSubmit={handleUpdatePricing} className="space-y-4">
@@ -257,7 +266,9 @@ const Dashboard = () => {
                   </form>
                 </DialogContent>
               </Dialog>
-              <Button variant="outline" size="sm" onClick={handleLogout}><LogOut className="w-4 h-4 mr-2" /> Sair</Button>
+              <Button variant="outline" size="sm" onClick={handleLogout} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                <LogOut className="w-4 h-4 mr-2" /> Sair
+              </Button>
             </div>
           </div>
         </div>
@@ -265,14 +276,36 @@ const Dashboard = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Locações Ativas</CardTitle><Timer className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold text-primary">{rentals.length}</div></CardContent></Card>
-          <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium">Locações em Atraso</CardTitle><AlertTriangle className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className={`text-2xl font-bold ${overdueRentalsCount > 0 ? 'text-destructive' : 'text-foreground'}`}>{overdueRentalsCount}</div></CardContent></Card>
+          <Card className="animate-fade-in hover:shadow-emerald transition-all duration-300 hover:scale-[1.02]">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Locações Ativas</CardTitle>
+              <Timer className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary transition-all duration-300">{rentals.length}</div>
+            </CardContent>
+          </Card>
+          <Card className={`animate-fade-in hover:shadow-lg transition-all duration-300 hover:scale-[1.02] ${overdueRentalsCount > 0 ? 'animate-pulse-glow' : ''}`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Locações em Atraso</CardTitle>
+              <AlertTriangle className={`h-4 w-4 ${overdueRentalsCount > 0 ? 'text-destructive' : 'text-muted-foreground'}`} />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold transition-all duration-300 ${overdueRentalsCount > 0 ? 'text-destructive' : 'text-foreground'}`}>
+                {overdueRentalsCount}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-foreground">Locações Ativas</h2>
+        <div className="flex justify-between items-center mb-6 animate-fade-in-up">
+          <h2 className="text-2xl font-bold text-foreground transition-colors duration-300">Locações Ativas</h2>
           <Dialog open={isNewRentalModalOpen} onOpenChange={setIsNewRentalModalOpen}>
-            <DialogTrigger asChild><Button><Plus className="w-4 h-4 mr-2" /> Nova Locação</Button></DialogTrigger>
+            <DialogTrigger asChild>
+              <Button className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+                <Plus className="w-4 h-4 mr-2" /> Nova Locação
+              </Button>
+            </DialogTrigger>
             <DialogContent>
               <DialogHeader><DialogTitle>Iniciar Nova Locação</DialogTitle><DialogDescription>Preencha os dados para iniciar uma nova locação.</DialogDescription></DialogHeader>
               <form onSubmit={handleStartRental} className="space-y-4">
@@ -299,7 +332,7 @@ const Dashboard = () => {
 
         {rentals.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rentals.map((rental) => {
+            {rentals.map((rental, index) => {
               const timeLeftSeconds = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 1000);
               const isOvertime = timeLeftSeconds < 0;
               
@@ -311,31 +344,67 @@ const Dashboard = () => {
               const currentCost = minutesElapsed * pricePerMinute;
               
               return (
-                <Card key={rental.id} className="border-0 shadow-lg flex flex-col">
+                <Card 
+                  key={rental.id} 
+                  className={`border-0 shadow-lg flex flex-col hover:shadow-emerald transition-all duration-300 hover:scale-[1.02] animate-fade-in-up ${isOvertime ? 'ring-2 ring-destructive/50 animate-pulse-glow' : ''}`}
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3"><div className="p-2 bg-primary/10 rounded-lg"><UserIcon className="w-6 h-6 text-primary" /></div>
-                        <div><CardTitle className="text-lg">{rental.client_name}</CardTitle><p className="text-sm text-muted-foreground capitalize">{rental.vehicle_type}</p></div>
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-primary/10 rounded-lg transition-all duration-300 hover:bg-primary/20 hover:scale-110">
+                          <UserIcon className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg transition-colors duration-300">{rental.client_name}</CardTitle>
+                          <p className="text-sm text-muted-foreground capitalize">{rental.vehicle_type}</p>
+                        </div>
                       </div>
-                      <Badge className={isOvertime ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}>{isOvertime ? "Excedido" : "Ativo"}</Badge>
+                      <Badge className={`transition-all duration-300 ${isOvertime ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground"}`}>
+                        {isOvertime ? "Excedido" : "Ativo"}
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3 flex-grow flex flex-col justify-end">
-                    {rental.client_phone && <div className="flex items-center text-sm text-muted-foreground"><Phone className="w-4 h-4 mr-2" /><span>{rental.client_phone}</span></div>}
-                    <div className={`flex items-center justify-between text-sm ${isOvertime ? 'text-destructive font-bold' : ''}`}><span className="text-muted-foreground">Tempo:</span><span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span></div>
+                    {rental.client_phone && (
+                      <div className="flex items-center text-sm text-muted-foreground transition-colors duration-300 hover:text-foreground">
+                        <Phone className="w-4 h-4 mr-2" />
+                        <span>{rental.client_phone}</span>
+                      </div>
+                    )}
+                    <div className={`flex items-center justify-between text-sm transition-all duration-300 ${isOvertime ? 'text-destructive font-bold scale-105' : ''}`}>
+                      <span className="text-muted-foreground">Tempo:</span>
+                      <span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span>
+                    </div>
                     
                     {/* Badge de custo em tempo real */}
-                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10">
+                    <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10 transition-all duration-300 hover:bg-primary/10 hover:border-primary/20">
                       <div className="flex items-center gap-2">
-                        <DollarSign className="w-4 h-4 text-primary" />
+                        <DollarSign className="w-4 h-4 text-primary transition-transform duration-300 hover:scale-110" />
                         <span className="text-sm font-medium text-muted-foreground">Custo atual:</span>
                       </div>
-                      <span className="text-lg font-bold text-primary">R$ {currentCost.toFixed(2)}</span>
+                      <span className="text-lg font-bold text-primary transition-all duration-300">
+                        R$ {currentCost.toFixed(2)}
+                      </span>
                     </div>
                     
                     <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => showQrCode(rental)}><QrCode className="w-4 h-4 mr-1" /> QR Code</Button>
-                      <Button variant="destructive" size="sm" className="flex-1" onClick={() => setEndConfirmForId(rental.id)}><Square className="w-4 h-4 mr-2" /> Finalizar</Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1 transition-all duration-300 hover:scale-105 hover:shadow-md" 
+                        onClick={() => showQrCode(rental)}
+                      >
+                        <QrCode className="w-4 h-4 mr-1" /> QR Code
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        size="sm" 
+                        className="flex-1 transition-all duration-300 hover:scale-105 hover:shadow-lg" 
+                        onClick={() => setEndConfirmForId(rental.id)}
+                      >
+                        <Square className="w-4 h-4 mr-2" /> Finalizar
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
