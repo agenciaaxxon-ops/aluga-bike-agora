@@ -142,29 +142,36 @@ const ClientTimer = () => {
     if (!rental) return;
     
     try {
-      const { error } = await supabase.functions.invoke("extend_rental_time", {
+      const { data, error } = await supabase.functions.invoke("extend_rental_time", {
         body: { 
           access_code: rental.access_code, 
           minutes: additionalMinutes 
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Extrair mensagem de erro da resposta
+        const errorMessage = error.message || "Tente novamente ou entre em contato com a loja";
+        throw new Error(errorMessage);
+      }
+
+      // Verificar se há erro na resposta de dados
+      if (data && data.error) {
+        throw new Error(data.error);
+      }
       
       const newEndTime = new Date(new Date(rental.end_time).getTime() + additionalMinutes * 60 * 1000);
       setRental(prev => prev ? { ...prev, end_time: newEndTime.toISOString() } : null);
       
-      // Toast com maior duração e ícone de sucesso
       toast({ 
-        title: "✓ Tempo adicionado com sucesso!",
-        description: `+${additionalMinutes} minutos foram adicionados ao seu aluguel`,
-        duration: 5000,
+        title: "✓ Tempo adicionado!",
+        description: `+${additionalMinutes} minutos`,
       });
       
     } catch (error: any) {
       toast({ 
         title: "Erro ao adicionar tempo", 
-        description: error.message || "Tente novamente ou entre em contato com a loja",
+        description: error.message,
         variant: "destructive" 
       });
     } finally {
@@ -205,52 +212,52 @@ const ClientTimer = () => {
   return (
     <div className="min-h-screen bg-app p-4">
       <div className="max-w-md mx-auto">
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-app-gradient rounded-2xl mb-4 shadow-emerald transition-all duration-300 hover:scale-110 hover:shadow-lg">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-app-gradient rounded-2xl mb-4 shadow-emerald">
             <Bike className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-1 transition-colors duration-300">{rental.store_name}</h1>
-          <p className="text-muted-foreground transition-colors duration-300">Acompanhe seu aluguel</p>
+          <h1 className="text-2xl font-bold text-foreground mb-1">{rental.store_name}</h1>
+          <p className="text-muted-foreground">Acompanhe seu aluguel</p>
         </div>
 
-        <Card className="mb-6 border-0 shadow-lg hover:shadow-emerald transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+        <Card className="mb-6 border-0 shadow-lg">
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg transition-colors duration-300">{rental.vehicle_name}</CardTitle>
-                <p className="text-sm text-muted-foreground capitalize transition-colors duration-300">
+                <CardTitle className="text-lg">{rental.vehicle_name}</CardTitle>
+                <p className="text-sm text-muted-foreground capitalize">
                   {rental.vehicle_type}
                 </p>
               </div>
-              <Badge className={`transition-all duration-300 ${isExpired ? 'bg-destructive animate-pulse' : 'bg-primary'} text-primary-foreground`}>
+              <Badge className={isExpired ? 'bg-destructive text-primary-foreground' : 'bg-primary text-primary-foreground'}>
                 {isExpired ? 'Expirado' : 'Em uso'}
               </Badge>
             </div>
           </CardHeader>
         </Card>
 
-        <Card className={`mb-6 border-0 shadow-lg hover:shadow-emerald transition-all duration-300 animate-fade-in-up ${isExpired ? 'ring-2 ring-destructive/50 animate-pulse-glow' : showWarning ? 'ring-2 ring-warning/50' : ''}`} style={{ animationDelay: '200ms' }}>
+        <Card className={`mb-6 border-0 shadow-lg ${isExpired ? 'ring-2 ring-destructive/50' : showWarning ? 'ring-2 ring-warning/50' : ''}`}>
           <CardContent className="pt-6">
             <div className="text-center">
               <div className="mb-4">
-                <Clock className={`w-12 h-12 mx-auto mb-2 transition-all duration-300 ${
-                  isExpired ? 'text-destructive animate-pulse' : showWarning ? 'text-warning animate-pulse' : 'text-primary'
+                <Clock className={`w-12 h-12 mx-auto mb-2 ${
+                  isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-primary'
                 }`} />
-                <h2 className="text-lg font-medium text-muted-foreground transition-colors duration-300">
+                <h2 className="text-lg font-medium text-muted-foreground">
                   {isExpired ? 'Tempo Excedido' : 'Tempo Restante'}
                 </h2>
               </div>
               
-              <div className={`text-6xl font-mono font-bold mb-4 transition-all duration-300 ${
-                isExpired ? 'text-destructive scale-105' : showWarning ? 'text-warning' : 'text-foreground'
+              <div className={`text-6xl font-mono font-bold mb-4 ${
+                isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-foreground'
               }`}>
                 {formatTime(timeLeft)}
               </div>
               
               {isExpired && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4 animate-scale-in">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-center text-destructive mb-2">
-                    <AlertTriangle className="w-5 h-5 mr-2 animate-pulse" />
+                    <AlertTriangle className="w-5 h-5 mr-2" />
                     <span className="font-medium">Tempo esgotado!</span>
                   </div>
                   <p className="text-sm text-destructive/80">
@@ -260,9 +267,9 @@ const ClientTimer = () => {
               )}
               
               {showWarning && !isExpired && (
-                <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4 animate-scale-in">
+                <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-center text-warning mb-2">
-                    <AlertTriangle className="w-5 h-5 mr-2 animate-pulse" />
+                    <AlertTriangle className="w-5 h-5 mr-2" />
                     <span className="font-medium">Atenção!</span>
                   </div>
                   <p className="text-sm text-warning/80">
@@ -276,7 +283,7 @@ const ClientTimer = () => {
 
         <Sheet open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
           <SheetTrigger asChild>
-            <Button className="w-full mb-6 transition-all duration-300 hover:scale-105 hover:shadow-lg animate-fade-in-up" size="lg" style={{ animationDelay: '300ms' }}>
+            <Button className="w-full mb-6" size="lg">
               <Plus className="w-5 h-5 mr-2" />
               Adicionar Mais Tempo
             </Button>
@@ -292,46 +299,46 @@ const ClientTimer = () => {
               <Button 
                 variant="outline" 
                 onClick={() => addTime(15)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all duration-300 hover:scale-105 hover:shadow-md"
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
-                <Clock className="w-8 h-8 transition-transform duration-300 group-hover:scale-110" />
+                <Clock className="w-8 h-8" />
                 <span className="font-semibold">+15 min</span>
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => addTime(30)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all duration-300 hover:scale-105 hover:shadow-md"
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
-                <Clock className="w-8 h-8 transition-transform duration-300 group-hover:scale-110" />
+                <Clock className="w-8 h-8" />
                 <span className="font-semibold">+30 min</span>
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => addTime(60)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all duration-300 hover:scale-105 hover:shadow-md"
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
-                <Clock className="w-8 h-8 transition-transform duration-300 group-hover:scale-110" />
+                <Clock className="w-8 h-8" />
                 <span className="font-semibold">+1 hora</span>
               </Button>
               <Button 
                 variant="outline" 
                 onClick={() => addTime(120)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary transition-all duration-300 hover:scale-105 hover:shadow-md"
+                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
-                <Clock className="w-8 h-8 transition-transform duration-300 group-hover:scale-110" />
+                <Clock className="w-8 h-8" />
                 <span className="font-semibold">+2 horas</span>
               </Button>
             </div>
           </SheetContent>
         </Sheet>
 
-        <Card className="border-0 shadow-lg hover:shadow-emerald transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '400ms' }}>
+        <Card className="border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg transition-colors duration-300">Informações da Loja</CardTitle>
+            <CardTitle className="text-lg">Informações da Loja</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center space-x-3 transition-colors duration-300 hover:text-primary">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center transition-all duration-300 hover:bg-primary/20 hover:scale-110">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Bike className="w-5 h-5 text-primary" />
               </div>
               <div>
@@ -362,9 +369,9 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        <Card className="mt-6 border-0 shadow-lg hover:shadow-emerald transition-all duration-300 animate-fade-in-up" style={{ animationDelay: '500ms' }}>
+        <Card className="mt-6 border-0 shadow-lg">
           <CardHeader>
-            <CardTitle className="text-lg transition-colors duration-300">Detalhes do Aluguel</CardTitle>
+            <CardTitle className="text-lg">Detalhes do Aluguel</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between text-sm">

@@ -166,19 +166,19 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-app via-background to-app flex items-center justify-center p-4">
+    <div className="min-h-screen bg-app flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-app-gradient rounded-3xl mb-6 shadow-emerald-lg hover:scale-105 transition-transform duration-300">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-app-gradient rounded-3xl mb-6 shadow-emerald-lg">
             <Bike className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-3 bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">Aluga Bike Baixada</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-3">Aluga Bike Baixada</h1>
           <p className="text-muted-foreground text-base">
             Sistema de gerenciamento para locação de bicicletas
           </p>
         </div>
 
-        <Card className="border-0 shadow-2xl backdrop-blur-lg animate-fade-in-up">
+        <Card className="border-0 shadow-2xl">
           <CardHeader className="space-y-1 pb-6 pt-8">
             <CardTitle className="text-3xl text-center font-bold">Acesso para Lojistas</CardTitle>
             <CardDescription className="text-center text-base">
@@ -359,7 +359,7 @@ const Login = () => {
           </CardContent>
         </Card>
         
-        <div className="text-center mt-8 text-sm text-muted-foreground animate-fade-in">
+        <div className="text-center mt-8 text-sm text-muted-foreground">
           <p className="font-medium">Sistema seguro para gestão de aluguéis</p>
         </div>
       </div>
