@@ -166,30 +166,30 @@ const Login = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-app flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-app via-background to-app flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-app-gradient rounded-2xl mb-4 shadow-emerald">
-            <Bike className="w-8 h-8 text-white" />
+        <div className="text-center mb-8 animate-fade-in">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-app-gradient rounded-3xl mb-6 shadow-emerald-lg hover:scale-105 transition-transform duration-300">
+            <Bike className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Aluga Bike Baixada</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-4xl font-bold text-foreground mb-3 bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">Aluga Bike Baixada</h1>
+          <p className="text-muted-foreground text-base">
             Sistema de gerenciamento para locação de bicicletas
           </p>
         </div>
 
-        <Card className="border-0 shadow-lg">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-2xl text-center">Acesso para Lojistas</CardTitle>
-            <CardDescription className="text-center">
+        <Card className="border-0 shadow-2xl backdrop-blur-lg animate-fade-in-up">
+          <CardHeader className="space-y-1 pb-6 pt-8">
+            <CardTitle className="text-3xl text-center font-bold">Acesso para Lojistas</CardTitle>
+            <CardDescription className="text-center text-base">
               Entre na sua conta ou cadastre sua loja
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-8">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login">Entrar</TabsTrigger>
-                <TabsTrigger value="register">Cadastrar</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-8 h-12 p-1">
+                <TabsTrigger value="login" className="text-base font-semibold">Entrar</TabsTrigger>
+                <TabsTrigger value="register" className="text-base font-semibold">Cadastrar</TabsTrigger>
               </TabsList>
               
               <TabsContent value="login" className="space-y-4">
@@ -244,9 +244,9 @@ const Login = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full h-12 text-base font-semibold" 
                     disabled={isLoading}
-                    variant="default"
+                    variant="premium"
                   >
                     {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
@@ -347,9 +347,9 @@ const Login = () => {
                   
                   <Button 
                     type="submit" 
-                    className="w-full" 
+                    className="w-full h-12 text-base font-semibold" 
                     disabled={isLoading}
-                    variant="default"
+                    variant="premium"
                   >
                     {isLoading ? "Cadastrando..." : "Cadastrar Loja"}
                   </Button>
@@ -359,8 +359,8 @@ const Login = () => {
           </CardContent>
         </Card>
         
-        <div className="text-center mt-6 text-sm text-muted-foreground">
-          <p>Sistema seguro para gestão de aluguéis</p>
+        <div className="text-center mt-8 text-sm text-muted-foreground animate-fade-in">
+          <p className="font-medium">Sistema seguro para gestão de aluguéis</p>
         </div>
       </div>
     </div>

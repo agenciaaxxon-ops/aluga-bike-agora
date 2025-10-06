@@ -9,100 +9,118 @@ All colors MUST be HSL.
 @layer base {
   :root {
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 210 24% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 210 24% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 210 24% 16%;
 
-    --primary: 160 84% 39%;
+    --primary: 158 64% 52%;
     --primary-foreground: 0 0% 100%;
+    --primary-light: 158 64% 62%;
+    --primary-dark: 158 64% 42%;
 
-    --secondary: 160 15% 96%;
-    --secondary-foreground: 160 84% 39%;
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 158 64% 32%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 210 20% 94%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 160 84% 39%;
+    --accent: 158 64% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
 
-    --success: 160 84% 39%;
+    --success: 158 64% 52%;
     --success-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 160 84% 39%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 158 64% 52%;
 
     --radius: 0.75rem;
 
     /* App specific colors */
-    --app-bg: 160 15% 98%;
-    --app-gradient: linear-gradient(135deg, hsl(160 84% 39%), hsl(160 74% 49%));
-    --vehicle-available: 160 84% 39%;
+    --app-bg: 210 20% 98%;
+    --app-gradient: linear-gradient(135deg, hsl(158 64% 52%) 0%, hsl(158 70% 42%) 100%);
+    --app-gradient-soft: linear-gradient(135deg, hsl(158 64% 52% / 0.1) 0%, hsl(158 70% 42% / 0.05) 100%);
+    --vehicle-available: 158 64% 52%;
     --vehicle-rented: 38 92% 50%;
-    --vehicle-maintenance: 220 9% 46%;
+    --vehicle-maintenance: 215 16% 47%;
     
-    /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(220 43% 11% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(220 43% 11% / 0.1);
-    --shadow-lg: 0 10px 15px -3px hsl(220 43% 11% / 0.1);
-    --shadow-emerald: 0 10px 25px -5px hsl(160 84% 39% / 0.25);
+    /* Enhanced shadows */
+    --shadow-sm: 0 1px 2px 0 hsl(210 24% 16% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(210 24% 16% / 0.08), 0 2px 4px -1px hsl(210 24% 16% / 0.06);
+    --shadow-lg: 0 10px 15px -3px hsl(210 24% 16% / 0.08), 0 4px 6px -2px hsl(210 24% 16% / 0.04);
+    --shadow-xl: 0 20px 25px -5px hsl(210 24% 16% / 0.1), 0 10px 10px -5px hsl(210 24% 16% / 0.04);
+    --shadow-emerald: 0 10px 40px -10px hsl(158 64% 52% / 0.35);
+    --shadow-emerald-lg: 0 20px 50px -10px hsl(158 64% 52% / 0.4);
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(158 64% 52%), hsl(158 70% 42%));
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 20% 99%));
+    --gradient-shimmer: linear-gradient(90deg, transparent, hsl(158 64% 52% / 0.1), transparent);
     
     /* Transitions */
-    --transition-all: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-colors: color, background-color, border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 210 24% 10%;
+    --foreground: 210 20% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 210 24% 12%;
+    --card-foreground: 210 20% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 210 24% 12%;
+    --popover-foreground: 210 20% 98%;
 
-    --primary: 160 74% 49%;
-    --primary-foreground: 222.2 84% 4.9%;
+    --primary: 158 64% 52%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 158 64% 62%;
+    --primary-dark: 158 64% 42%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 210 24% 16%;
+    --secondary-foreground: 158 64% 62%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 210 24% 16%;
+    --muted-foreground: 215 16% 60%;
 
-    --accent: 160 74% 49%;
-    --accent-foreground: 222.2 84% 4.9%;
+    --accent: 158 64% 52%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
 
     --warning: 45 93% 58%;
-    --warning-foreground: 222.2 84% 4.9%;
+    --warning-foreground: 210 24% 10%;
 
-    --success: 160 74% 49%;
-    --success-foreground: 222.2 84% 4.9%;
+    --success: 158 64% 52%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 160 74% 49%;
+    --border: 210 24% 20%;
+    --input: 210 24% 20%;
+    --ring: 158 64% 52%;
     
     /* Dark mode app colors */
-    --app-bg: 222.2 84% 4.9%;
-    --app-gradient: linear-gradient(135deg, hsl(160 74% 49%), hsl(160 64% 59%));
-    --vehicle-available: 160 74% 49%;
+    --app-bg: 210 24% 10%;
+    --app-gradient: linear-gradient(135deg, hsl(158 64% 52%) 0%, hsl(158 70% 42%) 100%);
+    --app-gradient-soft: linear-gradient(135deg, hsl(158 64% 52% / 0.2) 0%, hsl(158 70% 42% / 0.1) 100%);
+    --vehicle-available: 158 64% 52%;
     --vehicle-rented: 45 93% 58%;
-    --vehicle-maintenance: 215 20.2% 65.1%;
+    --vehicle-maintenance: 215 16% 60%;
+    
+    /* Dark mode shadows */
+    --shadow-emerald: 0 10px 40px -10px hsl(158 64% 52% / 0.5);
+    --shadow-emerald-lg: 0 20px 50px -10px hsl(158 64% 52% / 0.6);
   }
 }
 

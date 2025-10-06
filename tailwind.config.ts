@@ -65,7 +65,9 @@ export default {
         sm: "var(--shadow-sm)",
         md: "var(--shadow-md)",
         lg: "var(--shadow-lg)",
+        xl: "var(--shadow-xl)",
         emerald: "var(--shadow-emerald)",
+        "emerald-lg": "var(--shadow-emerald-lg)",
       },
       backgroundImage: {
         'app-gradient': 'var(--app-gradient)',
