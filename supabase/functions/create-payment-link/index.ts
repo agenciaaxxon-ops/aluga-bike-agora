@@ -52,8 +52,8 @@ serve(async (req) => {
     const customerData = {
       email: userEmail,
       name: profile?.store_name || shop.name || 'Loja Teste',
-      cellphone: shop.contact_phone || '(11) 99999-9999', // Telefone de teste
-      taxId: shop.document || '123.456.789-09', // CPF de teste válido para dev mode
+      cellphone: shop.contact_phone || '11999999999', // Apenas números
+      taxId: shop.document || '12345678909', // CPF apenas números (11 dígitos) para dev mode
     };
 
     console.log('Dados do cliente:', customerData);
