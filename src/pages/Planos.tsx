@@ -15,15 +15,37 @@ const Planos = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não encontrado");
 
+      // Detecta se estamos em ambiente de desenvolvimento
+      const isDev = window.location.hostname.includes('lovable.app') || 
+                    window.location.hostname.includes('localhost');
+      
+      const mode = isDev ? 'test' : 'prod';
+      console.log(`Criando link de pagamento no modo: ${mode}`);
+
       // Chama a edge function para criar o link de pagamento
       const { data, error } = await supabase.functions.invoke('create-payment-link', {
-        body: { userId: user.id, userEmail: user.email }
+        body: { 
+          userId: user.id, 
+          userEmail: user.email,
+          mode
+        }
       });
 
       if (error) throw error;
 
       if (data?.paymentUrl) {
-        console.log('Redirecionando para:', data.paymentUrl);
+        console.log('✅ Link de pagamento criado:', {
+          url: data.paymentUrl,
+          billingId: data.billingId,
+          devMode: data.devMode,
+          mode
+        });
+        
+        toast({
+          title: "Redirecionando para o pagamento",
+          description: `Billing ID: ${data.billingId} | Modo: ${data.devMode ? 'Desenvolvimento' : 'Produção'}`,
+        });
+        
         // Redireciona para o checkout do AbacatePay
         window.location.href = data.paymentUrl;
       } else {

@@ -13,23 +13,40 @@ serve(async (req) => {
   }
 
   try {
-    // Validação de segurança do webhook
-    const webhookSecret = req.headers.get('X-Webhook-Secret');
     const expectedSecret = Deno.env.get('ABACATEPAY_WEBHOOK_SECRET');
-
-    if (!webhookSecret || webhookSecret !== expectedSecret) {
-      console.error('Tentativa de acesso não autorizado ao webhook');
+    
+    // Valida o webhook secret via cabeçalho (produção) ou query string (testes)
+    const webhookSecretHeader = req.headers.get('x-webhook-secret') || req.headers.get('X-Webhook-Secret');
+    const url = new URL(req.url);
+    const webhookSecretQuery = url.searchParams.get('secret');
+    
+    const isValidSecret = webhookSecretHeader === expectedSecret || webhookSecretQuery === expectedSecret;
+    
+    if (!isValidSecret) {
+      console.error('Webhook secret inválido', { 
+        hasHeader: !!webhookSecretHeader,
+        hasQuery: !!webhookSecretQuery,
+        origin: req.headers.get('origin') || 'unknown',
+        method: req.method
+      });
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - Invalid webhook secret' }),
+        JSON.stringify({ error: 'Não autorizado' }),
         { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401 
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
-
+    
+    console.log('Webhook autenticado via:', webhookSecretHeader ? 'header' : 'query string');
+    
     const payload = await req.json();
-    console.log('Webhook recebido:', JSON.stringify(payload));
+    console.log('Webhook recebido:', {
+      status: payload.status,
+      billingId: payload.id || payload.data?.id,
+      metadata: payload.metadata,
+      devMode: payload.devMode || payload.data?.devMode
+    });
 
     // Verifica se é uma notificação de pagamento bem-sucedido
     if (payload.status === 'PAID' || payload.status === 'APPROVED') {

@@ -48,17 +48,22 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, userEmail } = await req.json();
+    const { userId, userEmail, mode = 'prod' } = await req.json();
 
     if (!userId || !userEmail) {
       throw new Error('userId e userEmail são obrigatórios');
     }
 
-    // Pega a API key do AbacatePay dos secrets
-    const abacatePayApiKey = Deno.env.get('ABACATEPAY_API_KEY');
+    // Seleciona a API key do AbacatePay baseado no modo
+    const abacatePayApiKey = mode === 'test' 
+      ? Deno.env.get('ABACATEPAY_API_KEY_TEST')
+      : Deno.env.get('ABACATEPAY_API_KEY');
+    
     if (!abacatePayApiKey) {
-      throw new Error('ABACATEPAY_API_KEY não configurada');
+      throw new Error(`ABACATEPAY_API_KEY${mode === 'test' ? '_TEST' : ''} não configurada`);
     }
+    
+    console.log(`Modo de pagamento: ${mode}`);
 
     // Busca dados da loja do usuário
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -176,6 +181,7 @@ serve(async (req) => {
     // Extrai URL de várias possíveis estruturas de resposta
     const paymentUrl = abacateData.data?.url || abacateData.url || abacateData.checkoutUrl;
     const billingId = abacateData.id || abacateData.data?.id;
+    const devMode = abacateData.data?.devMode || abacateData.devMode || false;
 
     if (!paymentUrl) {
       console.error('URL de pagamento não encontrada na resposta:', JSON.stringify(abacateData));
@@ -183,11 +189,14 @@ serve(async (req) => {
     }
 
     console.log('Link criado com sucesso:', paymentUrl);
+    console.log('Modo dev AbacatePay:', devMode);
+    console.log('Billing ID:', billingId);
 
     return new Response(
       JSON.stringify({ 
         paymentUrl,
-        billingId
+        billingId,
+        devMode
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
