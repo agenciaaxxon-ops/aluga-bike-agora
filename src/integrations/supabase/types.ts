@@ -119,6 +119,7 @@ export type Database = {
       shops: {
         Row: {
           address: string | null
+          admin_password: string | null
           contact_phone: string | null
           created_at: string | null
           document: string | null
@@ -129,6 +130,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          admin_password?: string | null
           contact_phone?: string | null
           created_at?: string | null
           document?: string | null
@@ -139,6 +141,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          admin_password?: string | null
           contact_phone?: string | null
           created_at?: string | null
           document?: string | null

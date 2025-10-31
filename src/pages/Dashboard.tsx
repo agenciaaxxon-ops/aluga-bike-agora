@@ -23,7 +23,8 @@ import {
   DollarSign,
   CreditCard,
   Users,
-  FileText
+  FileText,
+  Shield
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
@@ -78,9 +79,55 @@ const Dashboard = () => {
     quadriciclo: 1.00,
   });
 
+  // Estados para modo admin
+  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({ title: "Você saiu da sua conta." });
+  };
+
+  const handleVerifyAdminPassword = async () => {
+    if (!userShop) return;
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-admin-password', {
+        body: { shopId: userShop.id, password: adminPasswordInput }
+      });
+      
+      if (error) {
+        toast({ 
+          title: "Erro ao verificar senha", 
+          description: error.message,
+          variant: "destructive" 
+        });
+        return;
+      }
+      
+      if (data?.valid) {
+        setIsAdminMode(true);
+        setIsAdminDialogOpen(false);
+        setAdminPasswordInput("");
+        toast({ 
+          title: "Modo Admin ativado!", 
+          description: "Acesso completo concedido."
+        });
+      } else {
+        toast({ 
+          title: "Senha incorreta", 
+          description: "A senha de admin não está correta.",
+          variant: "destructive" 
+        });
+      }
+    } catch (err) {
+      toast({ 
+        title: "Erro", 
+        description: "Não foi possível verificar a senha.",
+        variant: "destructive" 
+      });
+    }
   };
 
   useEffect(() => {
@@ -270,34 +317,58 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 animate-fade-in">
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/relatorios')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                <FileText className="w-4 h-4 mr-2" /> Relatórios
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/configuracoes')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                <Settings className="w-4 h-4 mr-2" /> Configurações
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/equipe')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                <Users className="w-4 h-4 mr-2" /> Equipe
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assinatura')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                <CreditCard className="w-4 h-4 mr-2" /> Assinatura
-              </Button>
-              <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                    <DollarSign className="w-4 h-4 mr-2" /> Preços
+              {!isAdminMode ? (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setIsAdminDialogOpen(true)}
+                  className="transition-all duration-300 hover:scale-105 hover:shadow-md"
+                >
+                  <Shield className="w-4 h-4 mr-2" /> Admin
+                </Button>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setIsAdminMode(false);
+                      toast({ title: "Modo Admin desativado" });
+                    }}
+                    className="transition-all duration-300 hover:scale-105 hover:shadow-md border-primary text-primary"
+                  >
+                    <Shield className="w-4 h-4 mr-2" /> Sair do Modo Admin
                   </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader><DialogTitle>Configurar Preços</DialogTitle><DialogDescription>Defina o valor por minuto para cada tipo de veículo.</DialogDescription></DialogHeader>
-                  <form onSubmit={handleUpdatePricing} className="space-y-4">
-                    <div className="space-y-2"><Label htmlFor="bicicleta">Bicicleta (R$ por minuto)</Label><Input id="bicicleta" name="bicicleta" type="number" step="0.01" min="0" defaultValue={pricingConfig.bicicleta} required /></div>
-                    <div className="space-y-2"><Label htmlFor="triciclo">Triciclo (R$ por minuto)</Label><Input id="triciclo" name="triciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.triciclo} required /></div>
-                    <div className="space-y-2"><Label htmlFor="quadriciclo">Quadriciclo (R$ por minuto)</Label><Input id="quadriciclo" name="quadriciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.quadriciclo} required /></div>
-                    <div className="flex gap-3 pt-4"><Button type="button" variant="outline" className="flex-1" onClick={() => setIsPricingModalOpen(false)}>Cancelar</Button><Button type="submit" className="flex-1">Salvar Preços</Button></div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/relatorios')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <FileText className="w-4 h-4 mr-2" /> Relatórios
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/configuracoes')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <Settings className="w-4 h-4 mr-2" /> Configurações
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/equipe')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <Users className="w-4 h-4 mr-2" /> Equipe
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assinatura')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <CreditCard className="w-4 h-4 mr-2" /> Assinatura
+                  </Button>
+                  <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                        <DollarSign className="w-4 h-4 mr-2" /> Preços
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader><DialogTitle>Configurar Preços</DialogTitle><DialogDescription>Defina o valor por minuto para cada tipo de veículo.</DialogDescription></DialogHeader>
+                      <form onSubmit={handleUpdatePricing} className="space-y-4">
+                        <div className="space-y-2"><Label htmlFor="bicicleta">Bicicleta (R$ por minuto)</Label><Input id="bicicleta" name="bicicleta" type="number" step="0.01" min="0" defaultValue={pricingConfig.bicicleta} required /></div>
+                        <div className="space-y-2"><Label htmlFor="triciclo">Triciclo (R$ por minuto)</Label><Input id="triciclo" name="triciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.triciclo} required /></div>
+                        <div className="space-y-2"><Label htmlFor="quadriciclo">Quadriciclo (R$ por minuto)</Label><Input id="quadriciclo" name="quadriciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.quadriciclo} required /></div>
+                        <div className="flex gap-3 pt-4"><Button type="button" variant="outline" className="flex-1" onClick={() => setIsPricingModalOpen(false)}>Cancelar</Button><Button type="submit" className="flex-1">Salvar Preços</Button></div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
               <Button variant="outline" size="sm" onClick={handleLogout} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
                 <LogOut className="w-4 h-4 mr-2" /> Sair
               </Button>
@@ -505,6 +576,56 @@ const Dashboard = () => {
             </div>
           }
       </DialogContent></Dialog>
+
+      {/* Dialog de Verificação de Senha Admin */}
+      <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Acesso Administrativo</DialogTitle>
+            <DialogDescription>
+              Digite a senha de administrador para acessar funções restritas (relatórios, assinatura, configurações, equipe, preços).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="adminPasswordInput">Senha de Admin</Label>
+              <Input
+                id="adminPasswordInput"
+                type="password"
+                placeholder="Digite a senha de admin"
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleVerifyAdminPassword();
+                  }
+                }}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex-1" 
+                onClick={() => {
+                  setIsAdminDialogOpen(false);
+                  setAdminPasswordInput("");
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="button" 
+                className="flex-1" 
+                onClick={handleVerifyAdminPassword}
+              >
+                Entrar como Admin
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

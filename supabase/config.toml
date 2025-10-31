@@ -15,8 +15,8 @@ verify_jwt = true
 [functions.cancel-subscription]
 verify_jwt = true
 
-[functions.invite-team-member]
+[functions.verify-payment-status]
 verify_jwt = true
 
-[functions.verify-payment-status]
+[functions.verify-admin-password]
 verify_jwt = true

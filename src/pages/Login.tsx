@@ -22,10 +22,12 @@ const Login = () => {
 
   const [storeName, setStoreName] = useState("");
   const [ownerName, setOwnerName] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
   const [registerEmail, setRegisterEmail] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [registerEmailError, setRegisterEmailError] = useState("");
   const [registerPasswordError, setRegisterPasswordError] = useState("");
+  const [adminPasswordError, setAdminPasswordError] = useState("");
   const [passwordStrength, setPasswordStrength] = useState<"weak" | "medium" | "strong" | "">("");
 
   const emailSchema = z.string().trim().email("Email inválido").max(255);
@@ -121,6 +123,8 @@ const Login = () => {
     try {
       if (!storeName.trim()) throw new Error("Informe o nome da loja");
       if (!ownerName.trim()) throw new Error("Informe o nome do responsável");
+      if (!adminPassword.trim()) throw new Error("Informe a senha de acesso admin");
+      if (adminPassword.length < 4) throw new Error("A senha admin deve ter pelo menos 4 caracteres");
       emailSchema.parse(registerEmail);
       passwordSchema.parse(registerPassword);
 
@@ -128,7 +132,11 @@ const Login = () => {
         email: registerEmail,
         password: registerPassword,
         options: {
-          data: { store_name: storeName, owner_name: ownerName },
+          data: { 
+            store_name: storeName, 
+            owner_name: ownerName,
+            admin_password: adminPassword
+          },
         },
       });
 
@@ -159,6 +167,7 @@ const Login = () => {
         setActiveTab("login");
         setStoreName("");
         setOwnerName("");
+        setAdminPassword("");
         setRegisterEmail("");
         setRegisterPassword("");
       }
@@ -294,6 +303,33 @@ const Login = () => {
                         onChange={(e) => setOwnerName(e.target.value)}
                       />
                     </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="adminPassword">Senha de Acesso Admin</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                      <Input
+                        id="adminPassword"
+                        type="password"
+                        placeholder="Senha para acessar modo admin"
+                        className={`pl-10 ${adminPasswordError ? 'border-destructive' : ''}`}
+                        required
+                        value={adminPassword}
+                        onChange={(e) => {
+                          setAdminPassword(e.target.value);
+                          if (e.target.value && e.target.value.length < 4) {
+                            setAdminPasswordError("Mínimo 4 caracteres");
+                          } else {
+                            setAdminPasswordError("");
+                          }
+                        }}
+                      />
+                    </div>
+                    {adminPasswordError && <p className="text-xs text-destructive">{adminPasswordError}</p>}
+                    <p className="text-xs text-muted-foreground">
+                      Esta senha será usada pelos funcionários para acessar funções administrativas
+                    </p>
                   </div>
                   
                   <div className="space-y-2">
