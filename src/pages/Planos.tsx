@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -7,7 +8,45 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
 const Planos = () => {
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingData, setIsCheckingData] = useState(true);
+
+  // Verifica se o usuário completou o cadastro antes de permitir assinar
+  useEffect(() => {
+    const checkRequiredData = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+
+        const { data: shop } = await supabase
+          .from('shops')
+          .select('address, document, contact_phone')
+          .eq('user_id', user.id)
+          .single();
+
+        // Se algum campo obrigatório estiver vazio, redireciona para onboarding
+        if (!shop || !shop.address || !shop.document || !shop.contact_phone) {
+          toast({
+            title: "Complete seu cadastro",
+            description: "Preencha os dados da sua loja antes de assinar o plano.",
+          });
+          navigate('/onboarding');
+          return;
+        }
+
+        setIsCheckingData(false);
+      } catch (error) {
+        console.error('Erro ao verificar dados:', error);
+        navigate('/onboarding');
+      }
+    };
+
+    checkRequiredData();
+  }, [navigate]);
 
   const handleSubscribe = async () => {
     setIsLoading(true);
@@ -85,6 +124,20 @@ const Planos = () => {
     "Suporte prioritário",
     "Atualizações gratuitas"
   ];
+
+  // Mostra loading enquanto verifica os dados
+  if (isCheckingData) {
+    return (
+      <div className="min-h-screen bg-app flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl mb-6 shadow-xl animate-pulse">
+            <Bike className="w-10 h-10 text-primary-foreground" />
+          </div>
+          <p className="text-muted-foreground">Verificando dados...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-app flex items-center justify-center p-4">
