@@ -143,9 +143,9 @@ const Login = () => {
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
       } else if (data.user) {
-        // Atualiza o profile com trial de 5 minutos
+        // Atualiza o profile com trial de 20 minutos
         const trialEndsAt = new Date();
-        trialEndsAt.setMinutes(trialEndsAt.getMinutes() + 5);
+        trialEndsAt.setMinutes(trialEndsAt.getMinutes() + 20);
         
         await supabase
           .from('profiles')
