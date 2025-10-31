@@ -13,7 +13,8 @@ import { ArrowLeft, UserPlus, Trash2 } from "lucide-react";
 
 interface TeamMember {
   id: string;
-  user_id: string;
+  user_id: string | null;
+  invited_email: string | null;
   role: string;
   created_at: string;
 }
@@ -90,16 +91,19 @@ const DashboardEquipe = () => {
     try {
       setLoading(true);
 
-      // Convida usuário por e-mail
-      const { data, error } = await supabase.auth.admin.inviteUserByEmail(inviteEmail, {
-        data: {
-          shop_id: shopId,
-          role: 'funcionario'
-        },
-        redirectTo: `${window.location.origin}/dashboard`
+      // Chama edge function para enviar convite
+      const { data, error } = await supabase.functions.invoke('invite-team-member', {
+        body: {
+          email: inviteEmail,
+          shop_id: shopId
+        }
       });
 
       if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       toast({
         title: "Convite enviado!",
@@ -227,7 +231,11 @@ const DashboardEquipe = () => {
                     {teamMembers.map((member) => (
                       <TableRow key={member.id}>
                         <TableCell className="font-mono text-xs">
-                          {member.user_id.substring(0, 8)}...
+                          {member.user_id ? (
+                            member.user_id.substring(0, 8) + '...'
+                          ) : (
+                            <Badge variant="outline">Convite Pendente</Badge>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant={member.role === 'admin' ? 'default' : 'secondary'}>
@@ -235,7 +243,13 @@ const DashboardEquipe = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {new Date(member.created_at).toLocaleDateString('pt-BR')}
+                          {member.user_id ? (
+                            new Date(member.created_at).toLocaleDateString('pt-BR')
+                          ) : (
+                            <span className="text-muted-foreground text-sm">
+                              Aguardando aceite: {member.invited_email}
+                            </span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <AlertDialog>
@@ -246,15 +260,20 @@ const DashboardEquipe = () => {
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
-                                <AlertDialogTitle>Remover membro?</AlertDialogTitle>
+                                <AlertDialogTitle>
+                                  {member.user_id ? 'Remover membro?' : 'Cancelar convite?'}
+                                </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Esta ação não pode ser desfeita. O membro perderá acesso ao sistema.
+                                  {member.user_id 
+                                    ? 'Esta ação não pode ser desfeita. O membro perderá acesso ao sistema.'
+                                    : 'O convite será cancelado e o email não poderá mais ser usado para entrar na equipe.'
+                                  }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancelar</AlertDialogCancel>
                                 <AlertDialogAction onClick={() => handleRemoveMember(member.id)}>
-                                  Remover
+                                  {member.user_id ? 'Remover' : 'Cancelar Convite'}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
