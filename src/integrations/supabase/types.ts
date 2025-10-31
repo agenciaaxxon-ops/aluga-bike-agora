@@ -112,6 +112,7 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          has_completed_tutorial: boolean | null
           id: string
           owner_name: string
           store_name: string
@@ -121,6 +122,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          has_completed_tutorial?: boolean | null
           id: string
           owner_name: string
           store_name: string
@@ -130,6 +132,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          has_completed_tutorial?: boolean | null
           id?: string
           owner_name?: string
           store_name?: string

@@ -31,6 +31,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { TrialBanner } from "@/components/TrialBanner";
+import OnboardingTour from "@/components/OnboardingTour";
 
 type Rental = Database["public"]["Tables"]["rentals"]["Row"];
 
@@ -74,6 +75,8 @@ const Dashboard = () => {
   });
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
+  const [showOnboardingTour, setShowOnboardingTour] = useState(false);
+  const [hasCompletedTutorial, setHasCompletedTutorial] = useState(true);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -174,13 +177,21 @@ const Dashboard = () => {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('trial_ends_at, subscription_status, store_name')
+        .select('trial_ends_at, subscription_status, store_name, has_completed_tutorial')
         .eq('id', user.id)
         .single();
       
       if (profile) {
         setTrialEndsAt(profile.trial_ends_at);
         setSubscriptionStatus(profile.subscription_status);
+        setHasCompletedTutorial(profile.has_completed_tutorial || false);
+        
+        // Se é o primeiro acesso, ativa admin automaticamente e mostra tour
+        if (!profile.has_completed_tutorial) {
+          setIsAdminMode(true);
+          localStorage.setItem('adminMode', 'true');
+          setShowOnboardingTour(true);
+        }
       }
 
       let { data: shop, error: shopError } = await supabase.from('shops').select('*').eq('user_id', user.id).single();
@@ -209,6 +220,28 @@ const Dashboard = () => {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCompleteTutorial = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase
+        .from('profiles')
+        .update({ has_completed_tutorial: true })
+        .eq('id', user.id);
+
+      setShowOnboardingTour(false);
+      setHasCompletedTutorial(true);
+      
+      toast({
+        title: "Tutorial completo!",
+        description: "Bem-vindo ao Alugaí. Você está pronto para começar!"
+      });
+    } catch (error) {
+      console.error('Erro ao completar tutorial:', error);
     }
   };
   
@@ -790,6 +823,11 @@ const Dashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <OnboardingTour 
+        open={showOnboardingTour} 
+        onComplete={handleCompleteTutorial}
+      />
     </div>
   );
 };
