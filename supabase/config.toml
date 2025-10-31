@@ -2,3 +2,9 @@ project_id = "bdtjpegklvjjuifpsikg"
 
 [functions.extend_rental_time]
 verify_jwt = false
+
+[functions.create-payment-link]
+verify_jwt = true
+
+[functions.payment-webhook]
+verify_jwt = false
