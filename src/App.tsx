@@ -15,6 +15,7 @@ import DashboardAssinatura from "./pages/DashboardAssinatura";
 import DashboardEquipe from "./pages/DashboardEquipe";
 import DashboardConfiguracoes from "./pages/DashboardConfiguracoes";
 import DashboardRelatorios from "./pages/DashboardRelatorios";
+import DashboardFaturas from "./pages/DashboardFaturas";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from '@supabase/supabase-js';
 
@@ -200,6 +201,10 @@ const AppRoutes = () => {
       <Route
         path="/dashboard/relatorios"
         element={canAccessDashboard() ? <DashboardRelatorios /> : <Navigate to={getRedirectPath()} replace />}
+      />
+      <Route
+        path="/dashboard/faturas"
+        element={canAccessDashboard() ? <DashboardFaturas /> : <Navigate to={getRedirectPath()} replace />}
       />
       <Route path="/cliente/:rentalId" element={<ClientTimer />} />
       <Route path="*" element={<NotFound />} />

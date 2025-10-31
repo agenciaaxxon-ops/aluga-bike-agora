@@ -64,26 +64,8 @@ const DashboardAssinatura = () => {
     }
   };
 
-  const handleOpenPortal = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.functions.invoke('create-customer-portal-session');
-      
-      if (error) throw error;
-      
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (error) {
-      console.error('Erro ao abrir portal:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível abrir o portal do cliente.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
+  const handleOpenPortal = () => {
+    navigate('/dashboard/faturas');
   };
 
   const handleCancelSubscription = async () => {

@@ -9,9 +9,6 @@ verify_jwt = true
 [functions.payment-webhook]
 verify_jwt = false
 
-[functions.create-customer-portal-session]
-verify_jwt = true
-
 [functions.cancel-subscription]
 verify_jwt = true
 
@@ -19,4 +16,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.verify-admin-password]
+verify_jwt = true
+
+[functions.list-user-billings]
 verify_jwt = true
