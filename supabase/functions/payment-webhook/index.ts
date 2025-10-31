@@ -13,6 +13,21 @@ serve(async (req) => {
   }
 
   try {
+    // Validação de segurança do webhook
+    const webhookSecret = req.headers.get('X-Webhook-Secret');
+    const expectedSecret = Deno.env.get('ABACATEPAY_WEBHOOK_SECRET');
+
+    if (!webhookSecret || webhookSecret !== expectedSecret) {
+      console.error('Tentativa de acesso não autorizado ao webhook');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid webhook secret' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401 
+        }
+      );
+    }
+
     const payload = await req.json();
     console.log('Webhook recebido:', JSON.stringify(payload));
 
