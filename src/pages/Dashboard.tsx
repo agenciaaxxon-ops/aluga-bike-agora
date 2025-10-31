@@ -80,7 +80,9 @@ const Dashboard = () => {
   });
 
   // Estados para modo admin
-  const [isAdminMode, setIsAdminMode] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(() => {
+    return localStorage.getItem('adminMode') === 'true';
+  });
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
 
@@ -108,6 +110,7 @@ const Dashboard = () => {
       
       if (data?.valid) {
         setIsAdminMode(true);
+        localStorage.setItem('adminMode', 'true');
         setIsAdminDialogOpen(false);
         setAdminPasswordInput("");
         toast({ 
@@ -333,6 +336,7 @@ const Dashboard = () => {
                     size="sm" 
                     onClick={() => {
                       setIsAdminMode(false);
+                      localStorage.removeItem('adminMode');
                       toast({ title: "Modo Admin desativado" });
                     }}
                     className="transition-all duration-300 hover:scale-105 hover:shadow-md border-primary text-primary"
@@ -344,9 +348,6 @@ const Dashboard = () => {
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/configuracoes')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
                     <Settings className="w-4 h-4 mr-2" /> Configurações
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/equipe')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                    <Users className="w-4 h-4 mr-2" /> Equipe
                   </Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assinatura')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
                     <CreditCard className="w-4 h-4 mr-2" /> Assinatura
