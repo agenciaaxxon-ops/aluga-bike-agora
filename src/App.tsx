@@ -11,6 +11,10 @@ import ClientTimer from "./pages/ClientTimer";
 import NotFound from "./pages/NotFound";
 import Onboarding from "./pages/Onboarding";
 import Planos from "./pages/Planos";
+import DashboardAssinatura from "./pages/DashboardAssinatura";
+import DashboardEquipe from "./pages/DashboardEquipe";
+import DashboardConfiguracoes from "./pages/DashboardConfiguracoes";
+import DashboardRelatorios from "./pages/DashboardRelatorios";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from '@supabase/supabase-js';
 
@@ -113,6 +117,22 @@ const AppRoutes = () => {
       <Route
         path="/planos"
         element={session ? <Planos /> : <Navigate to="/login" replace />}
+      />
+      <Route
+        path="/dashboard/assinatura"
+        element={canAccessDashboard() ? <DashboardAssinatura /> : <Navigate to={getRedirectPath()} replace />}
+      />
+      <Route
+        path="/dashboard/equipe"
+        element={canAccessDashboard() ? <DashboardEquipe /> : <Navigate to={getRedirectPath()} replace />}
+      />
+      <Route
+        path="/dashboard/configuracoes"
+        element={canAccessDashboard() ? <DashboardConfiguracoes /> : <Navigate to={getRedirectPath()} replace />}
+      />
+      <Route
+        path="/dashboard/relatorios"
+        element={canAccessDashboard() ? <DashboardRelatorios /> : <Navigate to={getRedirectPath()} replace />}
       />
       <Route path="/cliente/:rentalId" element={<ClientTimer />} />
       <Route path="*" element={<NotFound />} />

@@ -10,6 +10,16 @@ import {
   SheetTitle, 
   SheetTrigger 
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { 
   Bike, 
@@ -43,6 +53,9 @@ const ClientTimer = () => {
   const [rental, setRental] = useState<RentalData | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [selectedMinutes, setSelectedMinutes] = useState(0);
+  const [calculatedPrice, setCalculatedPrice] = useState(0);
+  const [showPriceDialog, setShowPriceDialog] = useState(false);
   
   // Estado para controlar a abertura do modal
   const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
@@ -138,34 +151,70 @@ const ClientTimer = () => {
     return isOvertime ? `-${timeString}` : timeString;
   };
 
-  const addTime = async (additionalMinutes: number) => {
-    if (!rental) return;
+  const handleTimeSelection = async (minutes: number) => {
+    // Busca o preço por minuto da loja
+    if (!rental?.id) return;
+
+    try {
+      const { data: rentalData } = await supabase
+        .from('rentals')
+        .select('shop_id')
+        .eq('id', rental.id)
+        .single();
+
+      if (!rentalData) return;
+
+      const { data: shop } = await supabase
+        .from('shops')
+        .select('price_per_minute')
+        .eq('id', rentalData.shop_id)
+        .single();
+
+      const pricePerMinute = Number(shop?.price_per_minute || 0.69);
+      const totalPrice = pricePerMinute * minutes;
+
+      setSelectedMinutes(minutes);
+      setCalculatedPrice(totalPrice);
+      setIsAddTimeModalOpen(false);
+      setShowPriceDialog(true);
+    } catch (error) {
+      console.error('Erro ao calcular preço:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível calcular o preço.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const addTime = async () => {
+    if (!rental || selectedMinutes === 0) return;
+    
+    setShowPriceDialog(false);
     
     try {
       const { data, error } = await supabase.functions.invoke("extend_rental_time", {
         body: { 
           access_code: rental.access_code, 
-          minutes: additionalMinutes 
+          minutes: selectedMinutes 
         }
       });
 
       if (error) {
-        // Extrair mensagem de erro da resposta
         const errorMessage = error.message || "Tente novamente ou entre em contato com a loja";
         throw new Error(errorMessage);
       }
 
-      // Verificar se há erro na resposta de dados
       if (data && data.error) {
         throw new Error(data.error);
       }
       
-      const newEndTime = new Date(new Date(rental.end_time).getTime() + additionalMinutes * 60 * 1000);
+      const newEndTime = new Date(new Date(rental.end_time).getTime() + selectedMinutes * 60 * 1000);
       setRental(prev => prev ? { ...prev, end_time: newEndTime.toISOString() } : null);
       
       toast({ 
         title: "✓ Tempo adicionado!",
-        description: `+${additionalMinutes} minutos`,
+        description: `+${selectedMinutes} minutos`,
       });
       
     } catch (error: any) {
@@ -175,7 +224,8 @@ const ClientTimer = () => {
         variant: "destructive" 
       });
     } finally {
-      setIsAddTimeModalOpen(false);
+      setSelectedMinutes(0);
+      setCalculatedPrice(0);
     }
   };
 
@@ -298,7 +348,7 @@ const ClientTimer = () => {
             <div className="grid grid-cols-2 gap-4 pb-6">
               <Button 
                 variant="outline" 
-                onClick={() => addTime(15)} 
+                onClick={() => handleTimeSelection(15)} 
                 className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
                 <Clock className="w-8 h-8" />
@@ -306,7 +356,7 @@ const ClientTimer = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => addTime(30)} 
+                onClick={() => handleTimeSelection(30)} 
                 className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
                 <Clock className="w-8 h-8" />
@@ -314,7 +364,7 @@ const ClientTimer = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => addTime(60)} 
+                onClick={() => handleTimeSelection(60)} 
                 className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
                 <Clock className="w-8 h-8" />
@@ -322,7 +372,7 @@ const ClientTimer = () => {
               </Button>
               <Button 
                 variant="outline" 
-                onClick={() => addTime(120)} 
+                onClick={() => handleTimeSelection(120)} 
                 className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
               >
                 <Clock className="w-8 h-8" />
@@ -331,6 +381,32 @@ const ClientTimer = () => {
             </div>
           </SheetContent>
         </Sheet>
+
+        <AlertDialog open={showPriceDialog} onOpenChange={setShowPriceDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar adição de tempo</AlertDialogTitle>
+              <AlertDialogDescription>
+                Adicionar <strong>+{selectedMinutes} minutos</strong> por{" "}
+                <strong>
+                  {new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                  }).format(calculatedPrice)}
+                </strong>?
+                <br />
+                <br />
+                O valor será adicionado à sua conta final.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={addTime}>
+                Confirmar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <Card className="border-0 shadow-lg">
           <CardHeader>

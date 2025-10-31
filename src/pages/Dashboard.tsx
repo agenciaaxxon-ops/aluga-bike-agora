@@ -20,8 +20,12 @@ import {
   AlertTriangle,
   Printer,
   Share2,
-  DollarSign
+  DollarSign,
+  CreditCard,
+  Users,
+  FileText
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
 import { toast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -53,6 +57,7 @@ interface RentalReport {
 }
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const [rentals, setRentals] = useState<Rental[]>([]);
   const [userShop, setUserShop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -265,10 +270,22 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 animate-fade-in">
+              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/relatorios')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                <FileText className="w-4 h-4 mr-2" /> Relatórios
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/configuracoes')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                <Settings className="w-4 h-4 mr-2" /> Configurações
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/equipe')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                <Users className="w-4 h-4 mr-2" /> Equipe
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assinatura')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                <CreditCard className="w-4 h-4 mr-2" /> Assinatura
+              </Button>
               <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                    <Settings className="w-4 h-4 mr-2" /> Preços
+                    <DollarSign className="w-4 h-4 mr-2" /> Preços
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
