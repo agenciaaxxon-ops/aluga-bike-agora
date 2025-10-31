@@ -48,6 +48,16 @@ serve(async (req) => {
 
     console.log('Criando link de pagamento para:', userEmail);
 
+    // Dados de teste para dev mode (quando não fornecidos)
+    const customerData = {
+      email: userEmail,
+      name: profile?.store_name || shop.name || 'Loja Teste',
+      cellphone: shop.contact_phone || '(11) 99999-9999', // Telefone de teste
+      taxId: shop.document || '123.456.789-09', // CPF de teste válido para dev mode
+    };
+
+    console.log('Dados do cliente:', customerData);
+
     // Cria o pedido no AbacatePay
     const abacateResponse = await fetch('https://api.abacatepay.com/v1/billing/create', {
       method: 'POST',
@@ -69,12 +79,7 @@ serve(async (req) => {
         ],
         returnUrl: `${req.headers.get('origin')}/dashboard`,
         completionUrl: `${req.headers.get('origin')}/dashboard`,
-        customer: {
-          email: userEmail,
-          name: profile?.store_name || shop.name,
-          cellphone: shop.contact_phone || '',
-          taxId: shop.document || '',
-        },
+        customer: customerData,
         metadata: {
           userId,
           planType: 'pro',
