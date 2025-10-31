@@ -109,6 +109,9 @@ serve(async (req) => {
       name: profile?.store_name || shop.name || 'Loja Teste',
       cellphone,
       taxId,
+      metadata: {
+        userId,
+      }
     };
 
     console.log('Dados do cliente:', { 

@@ -21,9 +21,9 @@ const Planos = () => {
     if (fromPayment === 'true') {
       setCheckingPayment(true);
       
-      // Faz polling do status de assinatura por até 30 segundos
+      // Faz polling do status de assinatura por até 20 segundos (reduzido pois temos polling no App.tsx também)
       let attempts = 0;
-      const maxAttempts = 30;
+      const maxAttempts = 20;
       
       const checkSubscriptionStatus = async () => {
         try {

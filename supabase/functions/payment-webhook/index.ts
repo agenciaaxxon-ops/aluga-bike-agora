@@ -67,12 +67,24 @@ serve(async (req) => {
       status === 'APPROVED';
     
     if (isPaidEvent) {
-      const userId = metadata?.userId;
+      // Tenta extrair userId de múltiplas fontes possíveis
+      const userId = 
+        metadata?.userId ||
+        billingData?.customer?.metadata?.userId ||
+        payload.data?.customer?.metadata?.userId ||
+        payload.metadata?.userId;
       
       if (!userId) {
-        console.error('userId não encontrado no metadata');
+        console.error('userId não encontrado em nenhuma fonte', {
+          hasMetadata: !!metadata,
+          hasBillingCustomer: !!billingData?.customer,
+          hasPayloadDataCustomer: !!payload.data?.customer,
+          hasPayloadMetadata: !!payload.metadata
+        });
         throw new Error('userId não encontrado no webhook');
       }
+      
+      console.log('userId localizado:', userId);
 
       // Atualiza o status da assinatura para active
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;

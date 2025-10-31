@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -26,6 +26,8 @@ const AppRoutes = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
+  const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const checkSubscription = async (userId: string) => {
@@ -70,6 +72,63 @@ const AppRoutes = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Realtime subscription para mudanças no subscription_status
+  useEffect(() => {
+    if (!session?.user?.id) return;
+
+    const channel = supabase
+      .channel('profile-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${session.user.id}`,
+        },
+        (payload) => {
+          console.log('Profile atualizado em tempo real:', payload.new);
+          setSubscriptionStatus(payload.new.subscription_status);
+          setTrialEndsAt(payload.new.trial_ends_at);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session?.user?.id]);
+
+  // Polling como fallback para pending_payment
+  useEffect(() => {
+    if (!session?.user?.id) return;
+    if (subscriptionStatus !== 'pending_payment' && !window.location.search.includes('from_payment=true')) return;
+
+    let attempts = 0;
+    const maxAttempts = 60;
+    
+    const pollInterval = setInterval(async () => {
+      attempts++;
+      
+      const { data } = await supabase
+        .from('profiles')
+        .select('subscription_status, trial_ends_at')
+        .eq('id', session.user.id)
+        .single();
+
+      if (data) {
+        setSubscriptionStatus(data.subscription_status);
+        setTrialEndsAt(data.trial_ends_at);
+        
+        if (data.subscription_status === 'active' || attempts >= maxAttempts) {
+          clearInterval(pollInterval);
+        }
+      }
+    }, 1000);
+
+    return () => clearInterval(pollInterval);
+  }, [session?.user?.id, subscriptionStatus]);
+
   const canAccessDashboard = () => {
     if (!session) return false;
     if (subscriptionStatus === 'active') return true;
@@ -91,6 +150,14 @@ const AppRoutes = () => {
     }
     return '/onboarding';
   };
+
+  // Auto-redirect para dashboard quando assinatura ficar ativa
+  useEffect(() => {
+    if (subscriptionStatus === 'active' && (location.pathname === '/planos' || location.pathname === '/onboarding')) {
+      console.log('Assinatura ativa detectada, redirecionando para dashboard...');
+      navigate('/dashboard', { replace: true });
+    }
+  }, [subscriptionStatus, location.pathname, navigate]);
 
   if (loading || loadingSubscription) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
