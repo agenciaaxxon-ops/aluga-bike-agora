@@ -345,9 +345,10 @@ const Dashboard = () => {
       switch (pricingModel) {
         case 'per_minute':
           pricePerUnit = itemData.item_type.price_per_minute || 0;
-          initialCost = scheduledMinutes * pricePerUnit;
+          // Cobra pelo tempo real usado, seja menor ou maior que o contratado
+          totalAmount = totalMinutes * pricePerUnit;
+          initialCost = Math.min(totalMinutes, scheduledMinutes) * pricePerUnit;
           overtimeCost = overtimeMinutes * pricePerUnit;
-          totalAmount = initialCost + overtimeCost;
           break;
 
         case 'per_day':
@@ -360,9 +361,21 @@ const Dashboard = () => {
 
         case 'fixed_rate':
           pricePerUnit = itemData.item_type.price_fixed || 0;
-          totalAmount = pricePerUnit;
-          initialCost = pricePerUnit;
-          overtimeCost = 0;
+          // Taxa fixa: se devolver antes cobra proporcional, se exceder cobra taxa + extra
+          if (totalMinutes <= scheduledMinutes) {
+            // Devolveu antes ou no prazo: cobra proporcional
+            const proportion = totalMinutes / scheduledMinutes;
+            totalAmount = pricePerUnit * proportion;
+            initialCost = totalAmount;
+            overtimeCost = 0;
+          } else {
+            // Excedeu: cobra taxa fixa + tempo extra por minuto
+            const extraMinutes = totalMinutes - scheduledMinutes;
+            const pricePerMinute = pricePerUnit / scheduledMinutes; // Calcula preço por minuto baseado na taxa
+            overtimeCost = extraMinutes * pricePerMinute;
+            totalAmount = pricePerUnit + overtimeCost;
+            initialCost = pricePerUnit;
+          }
           break;
       }
 
