@@ -41,16 +41,33 @@ serve(async (req) => {
     console.log('Webhook autenticado via:', webhookSecretHeader ? 'header' : 'query string');
     
     const payload = await req.json();
-    console.log('Webhook recebido:', {
-      status: payload.status,
-      billingId: payload.id || payload.data?.id,
-      metadata: payload.metadata,
-      devMode: payload.devMode || payload.data?.devMode
+    console.log('Webhook recebido (payload completo):', JSON.stringify(payload, null, 2));
+    
+    // AbacatePay envia dados em data.billing ou data.transaction
+    const billingData = payload.data?.billing || payload.data?.transaction;
+    const eventType = payload.event;
+    const status = billingData?.status || payload.status;
+    const metadata = billingData?.metadata || payload.metadata;
+    
+    console.log('Webhook processado:', {
+      event: eventType,
+      status: status,
+      billingId: payload.id || billingData?.id,
+      metadata: metadata,
+      devMode: payload.devMode || billingData?.devMode
     });
 
-    // Verifica se é uma notificação de pagamento bem-sucedido
-    if (payload.status === 'PAID' || payload.status === 'APPROVED') {
-      const userId = payload.metadata?.userId;
+    // Verifica se é um evento de pagamento bem-sucedido
+    const isPaidEvent = 
+      eventType?.includes('paid') || 
+      eventType?.includes('completed') ||
+      eventType?.includes('success') ||
+      status === 'PAID' || 
+      status === 'COMPLETED' || 
+      status === 'APPROVED';
+    
+    if (isPaidEvent) {
+      const userId = metadata?.userId;
       
       if (!userId) {
         console.error('userId não encontrado no metadata');
@@ -84,7 +101,10 @@ serve(async (req) => {
     }
 
     // Se não for um status de pagamento confirmado, retorna sucesso mas não faz nada
-    console.log('Status não processado:', payload.status);
+    console.log('Evento/status não processado:', {
+      event: eventType,
+      status: status
+    });
     return new Response(
       JSON.stringify({ success: true, message: 'Webhook recebido' }),
       { 

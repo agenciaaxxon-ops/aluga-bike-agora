@@ -158,8 +158,8 @@ serve(async (req) => {
             price: 9900,
           }
         ],
-        returnUrl: `${req.headers.get('origin')}/dashboard`,
-        completionUrl: `${req.headers.get('origin')}/dashboard`,
+        returnUrl: `${req.headers.get('origin')}/planos?from_payment=true`,
+        completionUrl: `${req.headers.get('origin')}/planos?from_payment=true`,
         customerId,
         allowCoupons: true,
         metadata: {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,74 @@ import { toast } from "@/components/ui/use-toast";
 
 const Planos = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingData, setIsCheckingData] = useState(true);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+
+  // Verifica se voltou do pagamento e aguarda confirmação
+  useEffect(() => {
+    const fromPayment = searchParams.get('from_payment');
+    
+    if (fromPayment === 'true') {
+      setCheckingPayment(true);
+      
+      // Faz polling do status de assinatura por até 30 segundos
+      let attempts = 0;
+      const maxAttempts = 30;
+      
+      const checkSubscriptionStatus = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('subscription_status')
+            .eq('id', user.id)
+            .single();
+
+          if (profile?.subscription_status === 'active') {
+            toast({
+              title: "✅ Pagamento confirmado!",
+              description: "Sua assinatura está ativa. Redirecionando..."
+            });
+            
+            setTimeout(() => {
+              navigate('/dashboard', { replace: true });
+            }, 1500);
+            
+            return true;
+          }
+          
+          return false;
+        } catch (error) {
+          console.error('Erro ao verificar status:', error);
+          return false;
+        }
+      };
+      
+      const interval = setInterval(async () => {
+        attempts++;
+        
+        const isActive = await checkSubscriptionStatus();
+        
+        if (isActive || attempts >= maxAttempts) {
+          clearInterval(interval);
+          setCheckingPayment(false);
+          
+          if (!isActive && attempts >= maxAttempts) {
+            toast({
+              title: "Aguardando confirmação",
+              description: "O pagamento pode levar alguns instantes para ser confirmado.",
+            });
+          }
+        }
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [searchParams, navigate]);
 
   // Verifica se o usuário completou o cadastro antes de permitir assinar
   useEffect(() => {
@@ -125,15 +191,17 @@ const Planos = () => {
     "Atualizações gratuitas"
   ];
 
-  // Mostra loading enquanto verifica os dados
-  if (isCheckingData) {
+  // Mostra loading enquanto verifica os dados ou aguarda pagamento
+  if (isCheckingData || checkingPayment) {
     return (
       <div className="min-h-screen bg-app flex items-center justify-center">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl mb-6 shadow-xl animate-pulse">
             <Bike className="w-10 h-10 text-primary-foreground" />
           </div>
-          <p className="text-muted-foreground">Verificando dados...</p>
+          <p className="text-muted-foreground">
+            {checkingPayment ? "Verificando pagamento..." : "Verificando dados..."}
+          </p>
         </div>
       </div>
     );
