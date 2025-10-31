@@ -23,9 +23,11 @@ const Planos = () => {
       if (error) throw error;
 
       if (data?.paymentUrl) {
+        console.log('Redirecionando para:', data.paymentUrl);
         // Redireciona para o checkout do AbacatePay
         window.location.href = data.paymentUrl;
       } else {
+        console.error('Resposta da API:', data);
         throw new Error("Link de pagamento não gerado");
       }
 

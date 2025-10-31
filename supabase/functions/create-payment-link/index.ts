@@ -171,12 +171,23 @@ serve(async (req) => {
     }
 
     const abacateData = await abacateResponse.json();
-    console.log('Link criado com sucesso:', abacateData.url);
+    console.log('Resposta completa do AbacatePay:', JSON.stringify(abacateData, null, 2));
+
+    // Extrai URL de várias possíveis estruturas de resposta
+    const paymentUrl = abacateData.data?.url || abacateData.url || abacateData.checkoutUrl;
+    const billingId = abacateData.id || abacateData.data?.id;
+
+    if (!paymentUrl) {
+      console.error('URL de pagamento não encontrada na resposta:', JSON.stringify(abacateData));
+      throw new Error('URL de pagamento não foi gerada pela API');
+    }
+
+    console.log('Link criado com sucesso:', paymentUrl);
 
     return new Response(
       JSON.stringify({ 
-        paymentUrl: abacateData.url,
-        billingId: abacateData.id 
+        paymentUrl,
+        billingId
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
