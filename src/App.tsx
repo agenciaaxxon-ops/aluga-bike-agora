@@ -21,18 +21,23 @@ const AppRoutes = () => {
   const [loading, setLoading] = useState(true);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [loadingSubscription, setLoadingSubscription] = useState(true);
 
   useEffect(() => {
     const checkSubscription = async (userId: string) => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('subscription_status, trial_ends_at')
-        .eq('id', userId)
-        .single();
-      
-      if (data) {
-        setSubscriptionStatus(data.subscription_status);
-        setTrialEndsAt(data.trial_ends_at);
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('subscription_status, trial_ends_at')
+          .eq('id', userId)
+          .single();
+        
+        if (data) {
+          setSubscriptionStatus(data.subscription_status);
+          setTrialEndsAt(data.trial_ends_at);
+        }
+      } finally {
+        setLoadingSubscription(false);
       }
     };
 
@@ -40,6 +45,8 @@ const AppRoutes = () => {
       setSession(session);
       if (session?.user) {
         checkSubscription(session.user.id);
+      } else {
+        setLoadingSubscription(false);
       }
       setLoading(false);
     });
@@ -47,10 +54,12 @@ const AppRoutes = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session?.user) {
+        setLoadingSubscription(true);
         checkSubscription(session.user.id);
       } else {
         setSubscriptionStatus(null);
         setTrialEndsAt(null);
+        setLoadingSubscription(false);
       }
     });
 
@@ -67,17 +76,19 @@ const AppRoutes = () => {
   };
 
   const getRedirectPath = () => {
-    if (!subscriptionStatus) return '/login';
     if (subscriptionStatus === 'trial' && trialEndsAt && new Date(trialEndsAt) <= new Date()) {
       return '/onboarding';
     }
     if (subscriptionStatus === 'pending_payment') {
       return '/planos';
     }
-    return '/login';
+    if (subscriptionStatus === 'inactive' || !subscriptionStatus) {
+      return '/onboarding';
+    }
+    return '/onboarding';
   };
 
-  if (loading) {
+  if (loading || loadingSubscription) {
     return <div className="flex min-h-screen items-center justify-center">Carregando...</div>;
   }
 
