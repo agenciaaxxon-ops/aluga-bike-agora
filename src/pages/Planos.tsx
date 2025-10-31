@@ -13,6 +13,8 @@ const Planos = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingData, setIsCheckingData] = useState(true);
   const [checkingPayment, setCheckingPayment] = useState(false);
+  const [showManualVerify, setShowManualVerify] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Verifica se voltou do pagamento e aguarda confirmação
   useEffect(() => {
@@ -66,9 +68,10 @@ const Planos = () => {
           setCheckingPayment(false);
           
           if (!isActive && attempts >= maxAttempts) {
+            setShowManualVerify(true);
             toast({
               title: "Aguardando confirmação",
-              description: "O pagamento pode levar alguns instantes para ser confirmado.",
+              description: "Caso seu pagamento já foi aprovado, clique no botão abaixo para verificar manualmente.",
             });
           }
         }
@@ -113,6 +116,43 @@ const Planos = () => {
 
     checkRequiredData();
   }, [navigate]);
+
+  const handleManualVerify = async () => {
+    setIsVerifying(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não encontrado");
+
+      const { data, error } = await supabase.functions.invoke('verify-payment-status', {
+        body: { userId: user.id }
+      });
+
+      if (error) throw error;
+
+      if (data?.status === 'active') {
+        toast({
+          title: "✅ Pagamento confirmado!",
+          description: "Sua assinatura está ativa. Redirecionando..."
+        });
+        setTimeout(() => {
+          navigate('/dashboard', { replace: true });
+        }, 1500);
+      } else {
+        toast({
+          title: "Ainda processando",
+          description: data?.message || "Aguarde mais alguns instantes e tente novamente.",
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: "Erro ao verificar",
+        description: err?.message || "Tente novamente em alguns instantes",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const handleSubscribe = async () => {
     setIsLoading(true);
@@ -194,14 +234,30 @@ const Planos = () => {
   // Mostra loading enquanto verifica os dados ou aguarda pagamento
   if (isCheckingData || checkingPayment) {
     return (
-      <div className="min-h-screen bg-app flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-app flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-3xl mb-6 shadow-xl animate-pulse">
             <Bike className="w-10 h-10 text-primary-foreground" />
           </div>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             {checkingPayment ? "Verificando pagamento..." : "Verificando dados..."}
           </p>
+          
+          {showManualVerify && (
+            <div className="space-y-3 bg-card p-6 rounded-lg border">
+              <p className="text-sm text-muted-foreground">
+                Seu pagamento já foi aprovado?
+              </p>
+              <Button
+                onClick={handleManualVerify}
+                disabled={isVerifying}
+                variant="outline"
+                className="w-full"
+              >
+                {isVerifying ? "Verificando..." : "Verificar Pagamento Manualmente"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );

@@ -167,6 +167,7 @@ serve(async (req) => {
         allowCoupons: true,
         metadata: {
           userId,
+          email: userEmail,
           planType: 'pro',
         }
       })

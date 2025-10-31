@@ -68,23 +68,56 @@ serve(async (req) => {
     
     if (isPaidEvent) {
       // Tenta extrair userId de múltiplas fontes possíveis
-      const userId = 
+      let userId = 
         metadata?.userId ||
+        billingData?.metadata?.userId ||
         billingData?.customer?.metadata?.userId ||
         payload.data?.customer?.metadata?.userId ||
         payload.metadata?.userId;
       
+      // FALLBACK: Se não encontrar userId, tenta buscar pelo email
       if (!userId) {
-        console.error('userId não encontrado em nenhuma fonte', {
-          hasMetadata: !!metadata,
-          hasBillingCustomer: !!billingData?.customer,
-          hasPayloadDataCustomer: !!payload.data?.customer,
-          hasPayloadMetadata: !!payload.metadata
-        });
-        throw new Error('userId não encontrado no webhook');
+        const customerEmail = 
+          billingData?.customer?.metadata?.email ||
+          payload.data?.customer?.metadata?.email ||
+          metadata?.email;
+        
+        if (customerEmail) {
+          console.log('userId não encontrado no metadata, buscando pelo email:', customerEmail);
+          
+          // Busca o usuário pelo email no auth.users
+          const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+          const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+          const supabase = createClient(supabaseUrl, supabaseServiceKey);
+          
+          const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+          
+          if (authError) {
+            console.error('Erro ao buscar usuários:', authError);
+            throw new Error('Erro ao buscar usuário pelo email');
+          }
+          
+          const user = authData.users.find(u => u.email === customerEmail);
+          
+          if (user) {
+            userId = user.id;
+            console.log('✅ userId encontrado via email:', userId);
+          } else {
+            console.error('Usuário não encontrado com email:', customerEmail);
+            throw new Error('Usuário não encontrado com o email fornecido');
+          }
+        } else {
+          console.error('userId e email não encontrados', {
+            hasMetadata: !!metadata,
+            hasBillingCustomer: !!billingData?.customer,
+            hasPayloadDataCustomer: !!payload.data?.customer,
+            hasPayloadMetadata: !!payload.metadata
+          });
+          throw new Error('userId e email não encontrados no webhook');
+        }
+      } else {
+        console.log('✅ userId localizado no metadata:', userId);
       }
-      
-      console.log('userId localizado:', userId);
 
       // Atualiza o status da assinatura para active
       const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
