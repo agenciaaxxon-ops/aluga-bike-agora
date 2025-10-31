@@ -20,6 +20,8 @@ export type Database = {
           id: string
           owner_name: string
           store_name: string
+          subscription_status: string
+          trial_ends_at: string | null
           updated_at: string | null
         }
         Insert: {
@@ -27,6 +29,8 @@ export type Database = {
           id: string
           owner_name: string
           store_name: string
+          subscription_status?: string
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -34,6 +38,8 @@ export type Database = {
           id?: string
           owner_name?: string
           store_name?: string
+          subscription_status?: string
+          trial_ends_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -112,21 +118,30 @@ export type Database = {
       }
       shops: {
         Row: {
+          address: string | null
+          contact_phone: string | null
           created_at: string | null
+          document: string | null
           id: string
           name: string
           price_per_minute: number | null
           user_id: string
         }
         Insert: {
+          address?: string | null
+          contact_phone?: string | null
           created_at?: string | null
+          document?: string | null
           id?: string
           name: string
           price_per_minute?: number | null
           user_id: string
         }
         Update: {
+          address?: string | null
+          contact_phone?: string | null
           created_at?: string | null
+          document?: string | null
           id?: string
           name?: string
           price_per_minute?: number | null

@@ -135,23 +135,32 @@ const Login = () => {
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
       } else if (data.user) {
-        // *** INÍCIO DA MUDANÇA ***
-        // 1. Desloga o usuário para não entrar direto no dashboard
+        // Atualiza o profile com trial de 1 hora
+        const trialEndsAt = new Date();
+        trialEndsAt.setHours(trialEndsAt.getHours() + 1);
+        
+        await supabase
+          .from('profiles')
+          .update({ 
+            trial_ends_at: trialEndsAt.toISOString(),
+            subscription_status: 'trial' 
+          })
+          .eq('id', data.user.id);
+
+        // Desloga o usuário para não entrar direto no dashboard
         await supabase.auth.signOut(); 
 
-        // 2. Mostra a mensagem de sucesso
         toast({
           title: "Cadastro concluído!",
-          description: "Pode prosseguir com o login.",
+          description: "Você ganhou 1 hora de trial gratuito. Faça login para começar!",
         });
 
-        // 3. Muda para a aba de login e limpa os campos para uma melhor experiência
+        // Muda para a aba de login e limpa os campos
         setActiveTab("login");
         setStoreName("");
         setOwnerName("");
         setRegisterEmail("");
         setRegisterPassword("");
-        // *** FIM DA MUDANÇA ***
       }
 
     } catch (err: any) {
