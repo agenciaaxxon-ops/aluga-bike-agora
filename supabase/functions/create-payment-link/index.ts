@@ -56,8 +56,8 @@ serve(async (req) => {
         'Authorization': `Bearer ${abacatePayApiKey}`,
       },
       body: JSON.stringify({
-        frequency: 'monthly',
-        methods: ['PIX', 'CREDIT_CARD'],
+        frequency: 'ONE_TIME', // Valores permitidos: ONE_TIME ou MULTIPLE_PAYMENTS
+        methods: ['PIX'], // Apenas PIX para testes (suporta pagamento simulado)
         products: [
           {
             externalId: 'plano-pro',
