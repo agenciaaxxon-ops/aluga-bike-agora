@@ -269,10 +269,30 @@ const Dashboard = () => {
     const formData = new FormData(event.currentTarget);
     const clientName = formData.get("clientName") as string;
     const clientPhone = formData.get("clientPhone") as string;
-    const duration = parseInt(formData.get("duration") as string, 10);
+    
+    // Buscar o item_type para saber o pricing_model
+    const selectedType = itemTypes.find(t => t.id === selectedItemType);
+    if (!selectedType) {
+      toast({ 
+        title: "Erro", 
+        description: "Tipo de item não encontrado",
+        variant: "destructive" 
+      });
+      return;
+    }
 
     const startTime = new Date();
-    const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+    let endTime: Date;
+
+    // Calcular end_time baseado no pricing_model
+    if (selectedType.pricing_model === 'per_day') {
+      const days = parseInt(formData.get("days") as string, 10);
+      endTime = new Date(startTime.getTime() + days * 24 * 60 * 60 * 1000);
+    } else {
+      // per_minute e fixed_rate usam duration em minutos
+      const duration = parseInt(formData.get("duration") as string, 10);
+      endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+    }
 
     try {
       const { data, error } = await supabase.from('rentals').insert({
@@ -599,18 +619,76 @@ const Dashboard = () => {
                     </Select>
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label>Tempo Inicial</Label>
-                  <Select name="duration" required defaultValue="30">
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="30">30 minutos</SelectItem>
-                      <SelectItem value="60">1 hora</SelectItem>
-                      <SelectItem value="120">2 horas</SelectItem>
-                      <SelectItem value="180">3 horas</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                {selectedItemType && (() => {
+                  const selectedType = itemTypes.find(t => t.id === selectedItemType);
+                  const pricingModel = selectedType?.pricing_model;
+
+                  if (pricingModel === 'per_minute') {
+                    return (
+                      <div className="space-y-2">
+                        <Label>Tempo Inicial</Label>
+                        <Select name="duration" required defaultValue="30">
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 minutos</SelectItem>
+                            <SelectItem value="60">1 hora</SelectItem>
+                            <SelectItem value="120">2 horas</SelectItem>
+                            <SelectItem value="180">3 horas</SelectItem>
+                            <SelectItem value="360">6 horas</SelectItem>
+                            <SelectItem value="720">12 horas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Cobrança: R$ {selectedType.price_per_minute?.toFixed(2)}/minuto
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  if (pricingModel === 'per_day') {
+                    return (
+                      <div className="space-y-2">
+                        <Label>Número de Dias</Label>
+                        <Select name="days" required defaultValue="1">
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1 dia</SelectItem>
+                            <SelectItem value="2">2 dias</SelectItem>
+                            <SelectItem value="3">3 dias</SelectItem>
+                            <SelectItem value="7">7 dias</SelectItem>
+                            <SelectItem value="15">15 dias</SelectItem>
+                            <SelectItem value="30">30 dias</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Cobrança: R$ {selectedType.price_per_day?.toFixed(2)}/dia
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  if (pricingModel === 'fixed_rate') {
+                    return (
+                      <div className="space-y-2">
+                        <Label>Duração Estimada</Label>
+                        <Select name="duration" required defaultValue="60">
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 minutos</SelectItem>
+                            <SelectItem value="60">1 hora</SelectItem>
+                            <SelectItem value="120">2 horas</SelectItem>
+                            <SelectItem value="180">3 horas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Taxa fixa: R$ {selectedType.price_fixed?.toFixed(2)} (cobrança proporcional se devolver antes)
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return null;
+                })()}
                 <div className="flex gap-3 pt-4">
                   <Button type="button" variant="outline" className="flex-1" onClick={() => setIsNewRentalModalOpen(false)}>Cancelar</Button>
                   <Button type="submit" className="flex-1">Iniciar Locação</Button>
