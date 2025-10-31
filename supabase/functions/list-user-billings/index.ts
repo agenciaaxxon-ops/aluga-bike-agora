@@ -56,7 +56,24 @@ serve(async (req) => {
       throw new Error(`Erro ao buscar faturas: ${response.status}`);
     }
 
-    const allBillings = await response.json();
+    const apiResponse = await response.json();
+    console.log('Resposta completa da API:', JSON.stringify(apiResponse));
+    console.log('Tipo da resposta:', typeof apiResponse);
+    console.log('É array?:', Array.isArray(apiResponse));
+
+    // Extrair billings de forma segura
+    let allBillings = [];
+    if (Array.isArray(apiResponse)) {
+      allBillings = apiResponse;
+    } else if (apiResponse.data && Array.isArray(apiResponse.data)) {
+      allBillings = apiResponse.data;
+    } else if (apiResponse.billings && Array.isArray(apiResponse.billings)) {
+      allBillings = apiResponse.billings;
+    } else {
+      console.warn('Formato inesperado da API:', apiResponse);
+      allBillings = [];
+    }
+
     console.log('Total de billings retornados:', allBillings.length);
 
     // Filtra apenas as cobranças do usuário atual (por email)

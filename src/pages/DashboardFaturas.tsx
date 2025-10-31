@@ -121,8 +121,25 @@ const DashboardFaturas = () => {
   const handleUpdatePayment = async () => {
     try {
       setLoading(true);
+      
+      // Buscar dados do usuário autenticado
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Erro de autenticação",
+          description: "Você precisa estar logado.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Chamar edge function com todos os parâmetros necessários
       const { data, error } = await supabase.functions.invoke('create-payment-link', {
-        body: { mode: 'prod' }
+        body: { 
+          mode: 'prod',
+          userId: user.id,
+          userEmail: user.email
+        }
       });
       
       if (error) throw error;
