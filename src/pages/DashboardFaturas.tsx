@@ -144,8 +144,8 @@ const DashboardFaturas = () => {
       
       if (error) throw error;
       
-      if (data?.url) {
-        window.location.href = data.url;
+      if (data?.paymentUrl) {
+        window.location.href = data.paymentUrl;
       }
     } catch (error) {
       console.error('Erro ao criar link de pagamento:', error);

@@ -50,7 +50,7 @@ serve(async (req) => {
     // Buscar aluguel ativo pelo access_code com dados de extensão
     const { data: rental, error: findError } = await adminClient
       .from("rentals")
-      .select("id, start_time, end_time, status, shop_id, vehicle_id, extension_count, total_extended_minutes, last_extension_at")
+      .select("id, start_time, end_time, status, shop_id, item_id, extension_count, total_extended_minutes, last_extension_at")
       .eq("access_code", access_code)
       .eq("status", "Ativo")
       .maybeSingle();
