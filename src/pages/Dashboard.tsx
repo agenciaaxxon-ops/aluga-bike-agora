@@ -28,6 +28,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
+import { TrialBanner } from "@/components/TrialBanner";
+
 // Tipos
 type Rental = Database["public"]["Tables"]["rentals"]["Row"];
 type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
@@ -63,6 +65,8 @@ const Dashboard = () => {
   const [endConfirmForId, setEndConfirmForId] = useState<string | null>(null);
   const [rentalReport, setRentalReport] = useState<RentalReport | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [pricingConfig, setPricingConfig] = useState<PricingConfig>({
     bicicleta: 0.50,
     triciclo: 0.75,
@@ -100,10 +104,21 @@ const Dashboard = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; };
 
+      // Busca dados do profile para trial
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('trial_ends_at, subscription_status, store_name')
+        .eq('id', user.id)
+        .single();
+      
+      if (profile) {
+        setTrialEndsAt(profile.trial_ends_at);
+        setSubscriptionStatus(profile.subscription_status);
+      }
+
       let { data: shop, error: shopError } = await supabase.from('shops').select('*').eq('user_id', user.id).single();
 
       if (shopError && shopError.code === 'PGRST116') {
-        const { data: profile } = await supabase.from('profiles').select('store_name').eq('id', user.id).single();
         const { data: newShop, error: insertError } = await supabase.from('shops').insert({ user_id: user.id, name: profile?.store_name || 'Minha Loja' }).select().single();
         if (insertError) throw insertError;
         shop = newShop;
@@ -275,6 +290,11 @@ const Dashboard = () => {
       </div>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <TrialBanner 
+          trialEndsAt={trialEndsAt} 
+          subscriptionStatus={subscriptionStatus} 
+        />
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <Card className="animate-fade-in hover:shadow-emerald transition-all duration-300 hover:scale-[1.02]">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -135,9 +135,9 @@ const Login = () => {
       if (error) {
         toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
       } else if (data.user) {
-        // Atualiza o profile com trial de 1 hora
+        // Atualiza o profile com trial de 5 minutos
         const trialEndsAt = new Date();
-        trialEndsAt.setHours(trialEndsAt.getHours() + 1);
+        trialEndsAt.setMinutes(trialEndsAt.getMinutes() + 5);
         
         await supabase
           .from('profiles')
@@ -152,7 +152,7 @@ const Login = () => {
 
         toast({
           title: "Cadastro concluído!",
-          description: "Você ganhou 1 hora de trial gratuito. Faça login para começar!",
+          description: "Você ganhou 5 minutos de trial gratuito para testar. Faça login para começar!",
         });
 
         // Muda para a aba de login e limpa os campos
