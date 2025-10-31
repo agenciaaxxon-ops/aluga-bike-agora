@@ -30,11 +30,22 @@ const Planos = () => {
       }
 
     } catch (err: any) {
-      toast({
-        title: "Erro ao processar",
-        description: err?.message ?? "Tente novamente mais tarde",
-        variant: "destructive"
-      });
+      const errorMessage = err?.message ?? "Tente novamente mais tarde";
+      
+      // Trata especificamente erro de documento inválido
+      if (errorMessage.includes("Invalid taxId") || errorMessage.includes("taxId")) {
+        toast({
+          title: "Documento inválido",
+          description: "Atualize seu CPF/CNPJ na página de cadastro e tente novamente",
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro ao processar",
+          description: errorMessage,
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);
     }
