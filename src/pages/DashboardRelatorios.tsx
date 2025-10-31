@@ -11,7 +11,7 @@ import { ptBR } from "date-fns/locale";
 interface Rental {
   id: string;
   client_name: string;
-  vehicle_type: string;
+  item_id: string;
   start_time: string;
   actual_end_time: string;
   total_cost: number;
@@ -48,10 +48,10 @@ const DashboardRelatorios = () => {
         return;
       }
 
-      // Busca todos os aluguéis finalizados
+      // Busca todos os aluguéis finalizados com dados do item
       const { data: rentalsData } = await supabase
         .from('rentals')
-        .select('*')
+        .select('*, item:items(name, item_type:item_types(name))')
         .eq('shop_id', shop.id)
         .eq('status', 'Finalizado')
         .order('actual_end_time', { ascending: false });
@@ -181,14 +181,14 @@ const DashboardRelatorios = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Cliente</TableHead>
-                      <TableHead>Veículo</TableHead>
+                      <TableHead>Item</TableHead>
                       <TableHead>Data</TableHead>
                       <TableHead>Duração</TableHead>
                       <TableHead className="text-right">Valor</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {rentals.map((rental) => {
+                    {rentals.map((rental: any) => {
                       const duration = Math.round(
                         (new Date(rental.actual_end_time).getTime() - 
                          new Date(rental.start_time).getTime()) / 1000 / 60
@@ -197,7 +197,9 @@ const DashboardRelatorios = () => {
                       return (
                         <TableRow key={rental.id}>
                           <TableCell>{rental.client_name || 'N/A'}</TableCell>
-                          <TableCell className="capitalize">{rental.vehicle_type}</TableCell>
+                          <TableCell>
+                            {rental.item?.item_type?.name || rental.item?.name || 'N/A'}
+                          </TableCell>
                           <TableCell>
                             {format(new Date(rental.start_time), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
                           </TableCell>

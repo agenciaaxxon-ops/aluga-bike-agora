@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
-import { Bike, Store, Mail, Lock, User } from "lucide-react";
+import { Package, Store, Mail, Lock, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -180,7 +180,7 @@ const Login = () => {
   };
 
   useEffect(() => {
-    document.title = "Login | Aluga Bike Baixada";
+    document.title = "Login | Alugaí";
   }, []);
 
   return (
@@ -188,11 +188,11 @@ const Login = () => {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-app-gradient rounded-3xl mb-6 shadow-emerald-lg">
-            <Bike className="w-10 h-10 text-white" />
+            <Package className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-foreground mb-3">Aluga Bike Baixada</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-3">Alugaí</h1>
           <p className="text-muted-foreground text-base">
-            Sistema de gerenciamento para locação de bicicletas
+            Sistema de gerenciamento para locadoras
           </p>
         </div>
 

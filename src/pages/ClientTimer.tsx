@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Bike, 
+  Package, 
+  Store,
   Clock, 
   Plus, 
   AlertTriangle,
@@ -34,8 +35,8 @@ import { toast } from "@/hooks/use-toast";
 
 interface RentalData {
   id: string;
-  vehicle_name: string;
-  vehicle_type: string;
+  item_name: string;
+  item_type_name: string;
   start_time: string;
   end_time: string;
   store_name: string;
@@ -99,7 +100,7 @@ const ClientTimer = () => {
       
       const { data, error } = await supabase
         .from('rentals')
-        .select('*, shop:shops(name)')
+        .select('*, shop:shops(name, contact_phone, address), item:items(name, item_type:item_types(name))')
         .eq('access_code', rentalId)
         .eq('status', 'Ativo')
         .maybeSingle();
@@ -110,18 +111,15 @@ const ClientTimer = () => {
         return;
       }
 
-      // @ts-ignore
-      const storeName = Array.isArray(data.shop) ? data.shop[0]?.name : data.shop?.name || 'Loja Parceira';
-
       const rentalData: RentalData = {
         id: data.id,
-        // @ts-ignore
-        vehicle_name: data.vehicle_type ? data.vehicle_type.charAt(0).toUpperCase() + data.vehicle_type.slice(1) : 'Veículo',
-        // @ts-ignore
-        vehicle_type: data.vehicle_type || 'veículo',
+        item_name: data.item?.name || 'Item',
+        item_type_name: data.item?.item_type?.name || 'Tipo',
         start_time: data.start_time,
         end_time: data.end_time,
-        store_name: storeName,
+        store_name: data.shop?.name || 'Loja Parceira',
+        store_contact: data.shop?.contact_phone,
+        store_address: data.shop?.address,
         status: data.status,
         access_code: data.access_code
       };
@@ -264,7 +262,7 @@ const ClientTimer = () => {
       <div className="max-w-md mx-auto">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-app-gradient rounded-2xl mb-4 shadow-emerald">
-            <Bike className="w-8 h-8 text-white" />
+            <Package className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-1">{rental.store_name}</h1>
           <p className="text-muted-foreground">Acompanhe seu aluguel</p>
@@ -274,9 +272,9 @@ const ClientTimer = () => {
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">{rental.vehicle_name}</CardTitle>
-                <p className="text-sm text-muted-foreground capitalize">
-                  {rental.vehicle_type}
+                <CardTitle className="text-lg">{rental.item_name}</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {rental.item_type_name}
                 </p>
               </div>
               <Badge className={isExpired ? 'bg-destructive text-primary-foreground' : 'bg-primary text-primary-foreground'}>
@@ -415,7 +413,7 @@ const ClientTimer = () => {
           <CardContent className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                <Bike className="w-5 h-5 text-primary" />
+                <Store className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <p className="font-medium">{rental.store_name}</p>

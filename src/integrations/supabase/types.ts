@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      item_types: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          price_fixed: number | null
+          price_per_day: number | null
+          price_per_minute: number | null
+          pricing_model: string
+          shop_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          price_fixed?: number | null
+          price_per_day?: number | null
+          price_per_minute?: number | null
+          pricing_model?: string
+          shop_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          price_fixed?: number | null
+          price_per_day?: number | null
+          price_per_minute?: number | null
+          pricing_model?: string
+          shop_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_types_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          item_type_id: string | null
+          name: string
+          shop_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_type_id?: string | null
+          name: string
+          shop_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          item_type_id?: string | null
+          name?: string
+          shop_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_item_type_id_fkey"
+            columns: ["item_type_id"]
+            isOneToOne: false
+            referencedRelation: "item_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vehicles_shop_id_fkey"
+            columns: ["shop_id"]
+            isOneToOne: false
+            referencedRelation: "shops"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -54,14 +149,13 @@ export type Database = {
           end_time: string
           extension_count: number
           id: string
+          item_id: string | null
           last_extension_at: string | null
           shop_id: string
           start_time: string
           status: string
           total_cost: number | null
           total_extended_minutes: number
-          vehicle_id: string | null
-          vehicle_type: string | null
         }
         Insert: {
           access_code?: string
@@ -72,14 +166,13 @@ export type Database = {
           end_time: string
           extension_count?: number
           id?: string
+          item_id?: string | null
           last_extension_at?: string | null
           shop_id: string
           start_time: string
           status?: string
           total_cost?: number | null
           total_extended_minutes?: number
-          vehicle_id?: string | null
-          vehicle_type?: string | null
         }
         Update: {
           access_code?: string
@@ -90,14 +183,13 @@ export type Database = {
           end_time?: string
           extension_count?: number
           id?: string
+          item_id?: string | null
           last_extension_at?: string | null
           shop_id?: string
           start_time?: string
           status?: string
           total_cost?: number | null
           total_extended_minutes?: number
-          vehicle_id?: string | null
-          vehicle_type?: string | null
         }
         Relationships: [
           {
@@ -109,9 +201,9 @@ export type Database = {
           },
           {
             foreignKeyName: "rentals_vehicle_id_fkey"
-            columns: ["vehicle_id"]
+            columns: ["item_id"]
             isOneToOne: false
-            referencedRelation: "vehicles"
+            referencedRelation: "items"
             referencedColumns: ["id"]
           },
         ]
@@ -183,41 +275,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "team_members_shop_id_fkey"
-            columns: ["shop_id"]
-            isOneToOne: false
-            referencedRelation: "shops"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vehicles: {
-        Row: {
-          created_at: string | null
-          id: string
-          name: string
-          shop_id: string
-          status: string
-          type: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          name: string
-          shop_id: string
-          status?: string
-          type: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          name?: string
-          shop_id?: string
-          status?: string
-          type?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vehicles_shop_id_fkey"
             columns: ["shop_id"]
             isOneToOne: false
             referencedRelation: "shops"

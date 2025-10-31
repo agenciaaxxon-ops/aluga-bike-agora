@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
-  Bike, 
+  Package, 
   Plus, 
   LogOut, 
-  Clock, 
   Square, 
   QrCode,
   Timer,
@@ -22,7 +21,6 @@ import {
   Share2,
   DollarSign,
   CreditCard,
-  Users,
   FileText,
   Shield
 } from "lucide-react";
@@ -32,26 +30,17 @@ import { toast } from "@/hooks/use-toast";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
-
 import { TrialBanner } from "@/components/TrialBanner";
 
-// Tipos
 type Rental = Database["public"]["Tables"]["rentals"]["Row"];
-type VehicleType = "bicicleta" | "triciclo" | "quadriciclo";
-
-interface PricingConfig {
-  bicicleta: number;
-  triciclo: number;
-  quadriciclo: number;
-}
 
 interface RentalReport {
   clientName: string | null;
-  vehicleType: VehicleType | null;
+  itemTypeName: string;
   initialDuration: number;
   overtimeDuration: number;
   totalMinutes: number;
-  pricePerMinute: number;
+  pricePerUnit: number;
   initialCost: number;
   overtimeCost: number;
   totalAmount: number;
@@ -59,11 +48,10 @@ interface RentalReport {
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [rentals, setRentals] = useState<Rental[]>([]);
+  const [rentals, setRentals] = useState<any[]>([]);
   const [userShop, setUserShop] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isNewRentalModalOpen, setIsNewRentalModalOpen] = useState(false);
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [nowTick, setNowTick] = useState(Date.now());
   const [qrOpen, setQrOpen] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -73,11 +61,12 @@ const Dashboard = () => {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
-  const [pricingConfig, setPricingConfig] = useState<PricingConfig>({
-    bicicleta: 0.50,
-    triciclo: 0.75,
-    quadriciclo: 1.00,
-  });
+
+  // Novos estados para inventário
+  const [itemTypes, setItemTypes] = useState<any[]>([]);
+  const [selectedItemType, setSelectedItemType] = useState<string>("");
+  const [availableItems, setAvailableItems] = useState<any[]>([]);
+  const [selectedItem, setSelectedItem] = useState<string>("");
 
   // Estados para modo admin
   const [isAdminMode, setIsAdminMode] = useState(() => {
@@ -153,13 +142,36 @@ const Dashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, [userShop]);
 
+  // Carregar itens disponíveis quando selecionar um tipo
+  useEffect(() => {
+    if (!selectedItemType) {
+      setAvailableItems([]);
+      setSelectedItem("");
+      return;
+    }
+
+    const loadAvailableItems = async () => {
+      const { data, error } = await supabase
+        .from('items')
+        .select('*')
+        .eq('item_type_id', selectedItemType)
+        .eq('status', 'disponível')
+        .order('name');
+      
+      if (!error && data) {
+        setAvailableItems(data);
+      }
+    };
+
+    loadAvailableItems();
+  }, [selectedItemType]);
+
   const loadInitialData = async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; };
 
-      // Busca dados do profile para trial
       const { data: profile } = await supabase
         .from('profiles')
         .select('trial_ends_at, subscription_status, store_name')
@@ -181,7 +193,18 @@ const Dashboard = () => {
         throw shopError;
       }
       setUserShop(shop);
-      if (shop) await loadRentals(shop.id);
+      
+      if (shop) {
+        await loadRentals(shop.id);
+        
+        // Buscar item_types da loja
+        const { data: types } = await supabase
+          .from('item_types')
+          .select('*')
+          .eq('shop_id', shop.id)
+          .order('name');
+        if (types) setItemTypes(types);
+      }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
@@ -190,76 +213,165 @@ const Dashboard = () => {
   };
   
   const loadRentals = async (shopId: string) => {
-    const { data, error } = await supabase.from('rentals').select('*').eq('shop_id', shopId).eq('status', 'Ativo').order('created_at', { ascending: false });
-    if (!error) setRentals(data);
+    const { data, error } = await supabase
+      .from('rentals')
+      .select('*, item:items(name, item_type:item_types(*))')
+      .eq('shop_id', shopId)
+      .eq('status', 'Ativo')
+      .order('created_at', { ascending: false });
+    if (!error && data) setRentals(data);
   };
 
   const handleStartRental = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!userShop) return;
+    if (!userShop || !selectedItem) {
+      toast({ 
+        title: "Erro", 
+        description: "Selecione um item antes de iniciar",
+        variant: "destructive" 
+      });
+      return;
+    }
 
     const formData = new FormData(event.currentTarget);
     const clientName = formData.get("clientName") as string;
     const clientPhone = formData.get("clientPhone") as string;
-    const vehicleType = formData.get("vehicleType") as VehicleType;
     const duration = parseInt(formData.get("duration") as string, 10);
 
     const startTime = new Date();
     const endTime = new Date(startTime.getTime() + duration * 60 * 1000);
 
-    const { data, error } = await supabase.from('rentals').insert({
-      shop_id: userShop.id, client_name: clientName, client_phone: clientPhone, vehicle_type: vehicleType,
-      start_time: startTime.toISOString(), end_time: endTime.toISOString(), status: 'Ativo'
-    }).select().single();
+    try {
+      const { data, error } = await supabase.from('rentals').insert({
+        shop_id: userShop.id, 
+        item_id: selectedItem,
+        client_name: clientName, 
+        client_phone: clientPhone,
+        start_time: startTime.toISOString(), 
+        end_time: endTime.toISOString(), 
+        status: 'Ativo'
+      }).select().single();
 
-    if (error) {
-      toast({ title: "Erro ao iniciar locação", variant: "destructive" });
-    } else {
+      if (error) throw error;
+
+      // Atualizar status do item para "alugado"
+      const { error: itemError } = await supabase
+        .from('items')
+        .update({ status: 'alugado' })
+        .eq('id', selectedItem);
+
+      if (itemError) throw itemError;
+
       toast({ title: "Locação iniciada com sucesso!" });
       setIsNewRentalModalOpen(false);
-      setRentals(prev => [data, ...prev]); 
+      setSelectedItemType("");
+      setSelectedItem("");
       showQrCode(data);
+      await loadRentals(userShop.id);
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({ title: "Erro ao iniciar locação", variant: "destructive" });
     }
   };
   
   const handleEndRental = async (rentalId: string) => {
-    const rentalToEnd = rentals.find(r => r.id === rentalId);
-    if (!rentalToEnd || !rentalToEnd.vehicle_type) return;
+    try {
+      const rentalToEnd = rentals.find(r => r.id === rentalId);
+      if (!rentalToEnd) return;
 
-    const endTime = new Date();
-    const startTime = new Date(rentalToEnd.start_time);
-    const plannedEndTime = new Date(rentalToEnd.end_time);
-    
-    const initialDuration = Math.ceil((plannedEndTime.getTime() - startTime.getTime()) / (1000 * 60));
-    let totalMinutes = Math.ceil((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-    if (totalMinutes < 1) totalMinutes = 1;
-
-    const overtimeDuration = Math.max(0, totalMinutes - initialDuration);
-    
-    const pricePerMinute = pricingConfig[rentalToEnd.vehicle_type as VehicleType];
-    const initialCost = initialDuration * pricePerMinute;
-    const overtimeCost = overtimeDuration * pricePerMinute;
-    const totalAmount = totalMinutes * pricePerMinute;
-
-    const { error } = await supabase.from('rentals').update({
-      status: 'Finalizado', actual_end_time: endTime.toISOString(), total_cost: totalAmount
-    }).eq('id', rentalId);
-    
-    if (error) {
-      toast({ title: "Erro ao finalizar locação", variant: "destructive" });
-    } else {
-      setRentals(prevRentals => prevRentals.filter(r => r.id !== rentalId));
+      const actualEndTime = new Date();
       
+      // Buscar dados do item e seu tipo
+      const { data: itemData, error: itemError } = await supabase
+        .from('items')
+        .select('*, item_type:item_types(*)')
+        .eq('id', rentalToEnd.item_id)
+        .single();
+      
+      if (itemError || !itemData || !itemData.item_type) {
+        toast({
+          title: "Erro",
+          description: "Não foi possível buscar informações do item.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const startTime = new Date(rentalToEnd.start_time);
+      const scheduledEndTime = new Date(rentalToEnd.end_time);
+      const totalMinutes = Math.floor((actualEndTime.getTime() - startTime.getTime()) / 60000);
+      const scheduledMinutes = Math.floor((scheduledEndTime.getTime() - startTime.getTime()) / 60000);
+      const overtimeMinutes = Math.max(0, totalMinutes - scheduledMinutes);
+      
+      const pricingModel = itemData.item_type.pricing_model;
+      let totalAmount = 0;
+      let initialCost = 0;
+      let overtimeCost = 0;
+      let pricePerUnit = 0;
+
+      switch (pricingModel) {
+        case 'per_minute':
+          pricePerUnit = itemData.item_type.price_per_minute || 0;
+          initialCost = scheduledMinutes * pricePerUnit;
+          overtimeCost = overtimeMinutes * pricePerUnit;
+          totalAmount = initialCost + overtimeCost;
+          break;
+
+        case 'per_day':
+          pricePerUnit = itemData.item_type.price_per_day || 0;
+          const totalDays = Math.ceil(totalMinutes / (24 * 60));
+          totalAmount = totalDays * pricePerUnit;
+          initialCost = totalAmount;
+          overtimeCost = 0;
+          break;
+
+        case 'fixed_rate':
+          pricePerUnit = itemData.item_type.price_fixed || 0;
+          totalAmount = pricePerUnit;
+          initialCost = pricePerUnit;
+          overtimeCost = 0;
+          break;
+      }
+
+      const { error: updateError } = await supabase.from('rentals').update({
+        status: 'Finalizado', 
+        actual_end_time: actualEndTime.toISOString(), 
+        total_cost: totalAmount
+      }).eq('id', rentalId);
+      
+      if (updateError) throw updateError;
+
+      // Devolver item ao estoque
+      const { error: itemUpdateError } = await supabase
+        .from('items')
+        .update({ status: 'disponível' })
+        .eq('id', rentalToEnd.item_id);
+      
+      if (itemUpdateError) throw itemUpdateError;
+
       setRentalReport({
-        clientName: rentalToEnd.client_name, vehicleType: rentalToEnd.vehicle_type as VehicleType,
-        initialDuration, overtimeDuration, totalMinutes, pricePerMinute,
-        initialCost, overtimeCost, totalAmount
+        clientName: rentalToEnd.client_name, 
+        itemTypeName: itemData.item_type.name,
+        initialDuration: scheduledMinutes, 
+        overtimeDuration: overtimeMinutes, 
+        totalMinutes, 
+        pricePerUnit,
+        initialCost, 
+        overtimeCost, 
+        totalAmount
       });
       setIsReportModalOpen(true);
+      setEndConfirmForId(null);
+      await loadRentals(userShop.id);
+      
+      toast({ title: "Locação finalizada com sucesso!" });
+    } catch (error) {
+      console.error('Erro:', error);
+      toast({ title: "Erro ao finalizar locação", variant: "destructive" });
     }
   };
 
-  const showQrCode = async (rental: Rental) => {
+  const showQrCode = async (rental: any) => {
     const link = `${window.location.origin}/cliente/${rental.access_code}`;
     try {
       const dataUrl = await QRCode.toDataURL(link, { width: 224 });
@@ -269,19 +381,6 @@ const Dashboard = () => {
     } catch (e) {
       toast({ title: "Erro ao gerar QR Code", variant: "destructive" });
     }
-  };
-  
-  const handleUpdatePricing = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const newPricing: PricingConfig = {
-      bicicleta: parseFloat(formData.get("bicicleta") as string),
-      triciclo: parseFloat(formData.get("triciclo") as string),
-      quadriciclo: parseFloat(formData.get("quadriciclo") as string),
-    };
-    setPricingConfig(newPricing);
-    setIsPricingModalOpen(false);
-    toast({ title: "Tabela de preços atualizada!" });
   };
   
   const formatTime = (totalSeconds: number) => {
@@ -312,7 +411,7 @@ const Dashboard = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3 animate-fade-in">
               <div className="w-10 h-10 bg-app-gradient rounded-xl flex items-center justify-center shadow-emerald transition-all duration-300 hover:scale-110 hover:shadow-lg">
-                <Bike className="w-5 h-5 text-white" />
+                <Package className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground transition-colors duration-300">{userShop?.name || 'Minha Loja'}</h1>
@@ -343,6 +442,9 @@ const Dashboard = () => {
                   >
                     <Shield className="w-4 h-4 mr-2" /> Sair do Modo Admin
                   </Button>
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/inventario')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
+                    <Package className="w-4 h-4 mr-2" /> Inventário
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/relatorios')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
                     <FileText className="w-4 h-4 mr-2" /> Relatórios
                   </Button>
@@ -352,22 +454,6 @@ const Dashboard = () => {
                   <Button variant="outline" size="sm" onClick={() => navigate('/dashboard/assinatura')} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
                     <CreditCard className="w-4 h-4 mr-2" /> Assinatura
                   </Button>
-                  <Dialog open={isPricingModalOpen} onOpenChange={setIsPricingModalOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="transition-all duration-300 hover:scale-105 hover:shadow-md">
-                        <DollarSign className="w-4 h-4 mr-2" /> Preços
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader><DialogTitle>Configurar Preços</DialogTitle><DialogDescription>Defina o valor por minuto para cada tipo de veículo.</DialogDescription></DialogHeader>
-                      <form onSubmit={handleUpdatePricing} className="space-y-4">
-                        <div className="space-y-2"><Label htmlFor="bicicleta">Bicicleta (R$ por minuto)</Label><Input id="bicicleta" name="bicicleta" type="number" step="0.01" min="0" defaultValue={pricingConfig.bicicleta} required /></div>
-                        <div className="space-y-2"><Label htmlFor="triciclo">Triciclo (R$ por minuto)</Label><Input id="triciclo" name="triciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.triciclo} required /></div>
-                        <div className="space-y-2"><Label htmlFor="quadriciclo">Quadriciclo (R$ por minuto)</Label><Input id="quadriciclo" name="quadriciclo" type="number" step="0.01" min="0" defaultValue={pricingConfig.quadriciclo} required /></div>
-                        <div className="flex gap-3 pt-4"><Button type="button" variant="outline" className="flex-1" onClick={() => setIsPricingModalOpen(false)}>Cancelar</Button><Button type="submit" className="flex-1">Salvar Preços</Button></div>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
                 </>
               )}
               <Button variant="outline" size="sm" onClick={handleLogout} className="transition-all duration-300 hover:scale-105 hover:shadow-md">
@@ -416,11 +502,57 @@ const Dashboard = () => {
               </Button>
             </DialogTrigger>
             <DialogContent>
-              <DialogHeader><DialogTitle>Iniciar Nova Locação</DialogTitle><DialogDescription>Preencha os dados para iniciar uma nova locação.</DialogDescription></DialogHeader>
+              <DialogHeader>
+                <DialogTitle>Iniciar Nova Locação</DialogTitle>
+                <DialogDescription>Preencha os dados para iniciar uma nova locação.</DialogDescription>
+              </DialogHeader>
               <form onSubmit={handleStartRental} className="space-y-4">
-                <div className="space-y-2"><Label htmlFor="clientName">Nome do Cliente</Label><Input id="clientName" name="clientName" placeholder="Ex: João Silva" required /></div>
-                <div className="space-y-2"><Label htmlFor="clientPhone">Telefone (Opcional)</Label><Input id="clientPhone" name="clientPhone" placeholder="Ex: (13) 99999-9999" /></div>
-                <div className="space-y-2"><Label htmlFor="vehicleType">Tipo de Veículo</Label><Select name="vehicleType" required defaultValue="bicicleta"><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bicicleta">Bicicleta</SelectItem><SelectItem value="triciclo">Triciclo</SelectItem><SelectItem value="quadriciclo">Quadriciclo</SelectItem></SelectContent></Select></div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientName">Nome do Cliente</Label>
+                  <Input id="clientName" name="clientName" placeholder="Ex: João Silva" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientPhone">Telefone (Opcional)</Label>
+                  <Input id="clientPhone" name="clientPhone" placeholder="Ex: (13) 99999-9999" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="item-type">Tipo de Item</Label>
+                  <Select value={selectedItemType} onValueChange={setSelectedItemType} required>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {itemTypes.map((type) => (
+                        <SelectItem key={type.id} value={type.id}>
+                          {type.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedItemType && (
+                  <div className="space-y-2">
+                    <Label htmlFor="item">Item Específico</Label>
+                    <Select value={selectedItem} onValueChange={setSelectedItem} required>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o item" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableItems.length === 0 ? (
+                          <SelectItem value="none" disabled>
+                            Nenhum item disponível
+                          </SelectItem>
+                        ) : (
+                          availableItems.map((item) => (
+                            <SelectItem key={item.id} value={item.id}>
+                              {item.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Tempo Inicial</Label>
                   <Select name="duration" required defaultValue="30">
@@ -433,7 +565,10 @@ const Dashboard = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex gap-3 pt-4"><Button type="button" variant="outline" className="flex-1" onClick={() => setIsNewRentalModalOpen(false)}>Cancelar</Button><Button type="submit" className="flex-1">Iniciar Locação</Button></div>
+                <div className="flex gap-3 pt-4">
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsNewRentalModalOpen(false)}>Cancelar</Button>
+                  <Button type="submit" className="flex-1">Iniciar Locação</Button>
+                </div>
               </form>
             </DialogContent>
           </Dialog>
@@ -441,15 +576,14 @@ const Dashboard = () => {
 
         {rentals.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {rentals.map((rental, index) => {
+            {rentals.map((rental: any, index: number) => {
               const timeLeftSeconds = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 1000);
               const isOvertime = timeLeftSeconds < 0;
               
-              // Calcular custo atual em tempo real
               const startTime = new Date(rental.start_time).getTime();
               const currentTime = nowTick;
               const minutesElapsed = Math.ceil((currentTime - startTime) / (1000 * 60));
-              const pricePerMinute = rental.vehicle_type ? pricingConfig[rental.vehicle_type as VehicleType] : 0;
+              const pricePerMinute = rental.item?.item_type?.price_per_minute || 0;
               const currentCost = minutesElapsed * pricePerMinute;
               
               return (
@@ -466,7 +600,7 @@ const Dashboard = () => {
                         </div>
                         <div>
                           <CardTitle className="text-lg transition-colors duration-300">{rental.client_name}</CardTitle>
-                          <p className="text-sm text-muted-foreground capitalize">{rental.vehicle_type}</p>
+                          <p className="text-sm text-muted-foreground">{rental.item?.name || 'Item'}</p>
                         </div>
                       </div>
                       <Badge className={`transition-all duration-300 ${isOvertime ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground"}`}>
@@ -486,7 +620,6 @@ const Dashboard = () => {
                       <span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span>
                     </div>
                     
-                    {/* Badge de custo em tempo real */}
                     <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10 transition-all duration-300 hover:bg-primary/10 hover:border-primary/20">
                       <div className="flex items-center gap-2">
                         <DollarSign className="w-4 h-4 text-primary transition-transform duration-300 hover:scale-110" />
@@ -521,26 +654,57 @@ const Dashboard = () => {
             })}
           </div>
         ) : (
-          <div className="text-center py-16 border-2 border-dashed rounded-lg"><h3 className="text-lg font-medium text-muted-foreground">Nenhuma locação ativa no momento.</h3><p className="text-sm text-muted-foreground">Clique em "Nova Locação" para começar.</p></div>
+          <div className="text-center py-16 border-2 border-dashed rounded-lg">
+            <h3 className="text-lg font-medium text-muted-foreground">Nenhuma locação ativa no momento.</h3>
+            <p className="text-sm text-muted-foreground">Clique em "Nova Locação" para começar.</p>
+          </div>
         )}
       </main>
 
-      <Dialog open={qrOpen} onOpenChange={setQrOpen}><DialogContent className="max-w-sm"><DialogHeader><DialogTitle>QR Code do Cliente</DialogTitle><DialogDescription>Peça para o cliente escanear para abrir o cronômetro no celular.</DialogDescription></DialogHeader>{qrDataUrl && <div className="flex flex-col items-center gap-3"><img src={qrDataUrl} alt="QR Code" className="w-56 h-56" /><div className="text-xs break-all text-muted-foreground text-center">{qrLink}</div></div>}</DialogContent></Dialog>
-      <AlertDialog open={!!endConfirmForId} onOpenChange={(open) => !open && setEndConfirmForId(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Finalizar locação?</AlertDialogTitle><AlertDialogDescription>Essa ação não pode ser desfeita e irá gerar o relatório de cobrança.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={() => { if(endConfirmForId) handleEndRental(endConfirmForId); setEndConfirmForId(null); }}>Finalizar</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <Dialog open={qrOpen} onOpenChange={setQrOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>QR Code do Cliente</DialogTitle>
+            <DialogDescription>Peça para o cliente escanear para abrir o cronômetro no celular.</DialogDescription>
+          </DialogHeader>
+          {qrDataUrl && (
+            <div className="flex flex-col items-center gap-3">
+              <img src={qrDataUrl} alt="QR Code" className="w-56 h-56" />
+              <div className="text-xs break-all text-muted-foreground text-center">{qrLink}</div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!endConfirmForId} onOpenChange={(open) => !open && setEndConfirmForId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar locação?</AlertDialogTitle>
+            <AlertDialogDescription>Essa ação não pode ser desfeita e irá gerar o relatório de cobrança.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { if(endConfirmForId) handleEndRental(endConfirmForId); setEndConfirmForId(null); }}>Finalizar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
-      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}><DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>Relatório de Finalização</DialogTitle><DialogDescription>Resumo da locação para cobrança.</DialogDescription></DialogHeader>
+      <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Relatório de Finalização</DialogTitle>
+            <DialogDescription>Resumo da locação para cobrança.</DialogDescription>
+          </DialogHeader>
           {rentalReport && 
             <div className="space-y-4">
               <div id="rental-report-content" className="border rounded-lg p-4 space-y-3">
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Cliente:</span><span className="font-medium">{rentalReport.clientName}</span></div>
-                <div className="flex justify-between"><span className="text-sm text-muted-foreground">Veículo:</span><span className="font-medium capitalize">{rentalReport.vehicleType}</span></div>
+                <div className="flex justify-between"><span className="text-sm text-muted-foreground">Item:</span><span className="font-medium">{rentalReport.itemTypeName}</span></div>
                 <div className="border-t my-2"></div>
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Tempo Contratado:</span><span className="font-medium">{rentalReport.initialDuration} min</span></div>
                 {rentalReport.overtimeDuration > 0 && <div className="flex justify-between text-destructive"><span className="text-sm">Tempo Excedente:</span><span className="font-medium">{rentalReport.overtimeDuration} min</span></div>}
                 <div className="border-t my-2"></div>
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Total de Minutos:</span><span className="font-medium">{rentalReport.totalMinutes} min</span></div>
-                <div className="flex justify-between"><span className="text-sm text-muted-foreground">Preço/minuto:</span><span className="font-medium">R$ {rentalReport.pricePerMinute.toFixed(2)}</span></div>
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total a Pagar:</span>
@@ -549,7 +713,6 @@ const Dashboard = () => {
                 </div>
               </div>
               
-              {/* Botões de ação no relatório */}
               <div className="grid grid-cols-2 gap-3">
                 <Button 
                   variant="outline" 
@@ -562,7 +725,7 @@ const Dashboard = () => {
                 <Button 
                   variant="outline"
                   onClick={() => {
-                    const text = `*Relatório de Locação*\n\nCliente: ${rentalReport.clientName}\nVeículo: ${rentalReport.vehicleType}\nTempo total: ${rentalReport.totalMinutes} min\n*Total: R$ ${rentalReport.totalAmount.toFixed(2)}*`;
+                    const text = `*Relatório de Locação*\n\nCliente: ${rentalReport.clientName}\nItem: ${rentalReport.itemTypeName}\nTempo total: ${rentalReport.totalMinutes} min\n*Total: R$ ${rentalReport.totalAmount.toFixed(2)}*`;
                     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
                     window.open(url, '_blank');
                   }}
@@ -576,15 +739,15 @@ const Dashboard = () => {
               <Button onClick={() => setIsReportModalOpen(false)} className="w-full">Fechar</Button>
             </div>
           }
-      </DialogContent></Dialog>
+        </DialogContent>
+      </Dialog>
 
-      {/* Dialog de Verificação de Senha Admin */}
       <Dialog open={isAdminDialogOpen} onOpenChange={setIsAdminDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Acesso Administrativo</DialogTitle>
             <DialogDescription>
-              Digite a senha de administrador para acessar funções restritas (relatórios, assinatura, configurações, equipe, preços).
+              Digite a senha de administrador para acessar funções restritas.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -627,7 +790,6 @@ const Dashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 };
