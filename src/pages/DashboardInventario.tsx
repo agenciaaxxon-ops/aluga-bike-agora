@@ -6,7 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Package, ArrowRight, ArrowLeft, DollarSign, Pencil } from "lucide-react";
+import { Plus, Package, ArrowRight, ArrowLeft, DollarSign, Pencil, Bike, Box, Wrench, Camera, Tent, LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
@@ -19,6 +19,15 @@ interface ItemType {
   price_fixed: number | null;
   icon: string;
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  bike: Bike,
+  package: Package,
+  box: Box,
+  wrench: Wrench,
+  camera: Camera,
+  tent: Tent
+};
 
 const DashboardInventario = () => {
   const navigate = useNavigate();
@@ -297,7 +306,10 @@ const DashboardInventario = () => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-lg">
-                        <Package className="w-6 h-6 text-primary" />
+                        {(() => {
+                          const IconComponent = iconMap[itemType.icon] || Package;
+                          return <IconComponent className="w-6 h-6 text-primary" />;
+                        })()}
                       </div>
                       <div>
                         <CardTitle className="text-lg">{itemType.name}</CardTitle>

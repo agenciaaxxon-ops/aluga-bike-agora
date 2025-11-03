@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, ArrowLeft, Package, Pencil } from "lucide-react";
+import { Plus, ArrowLeft, Package, Pencil, Bike, Box, Wrench, Camera, Tent, LucideIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Item {
@@ -28,7 +28,17 @@ interface ItemType {
   price_per_minute: number | null;
   price_per_day: number | null;
   price_fixed: number | null;
+  icon: string;
 }
+
+const iconMap: Record<string, LucideIcon> = {
+  bike: Bike,
+  package: Package,
+  box: Box,
+  wrench: Wrench,
+  camera: Camera,
+  tent: Tent
+};
 
 const DashboardItemTypeDetail = () => {
   const { typeId } = useParams();
@@ -197,7 +207,13 @@ const DashboardItemTypeDetail = () => {
               Voltar
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-foreground">{itemType.name}</h1>
+              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+                {itemType.icon && (() => {
+                  const IconComponent = iconMap[itemType.icon] || Package;
+                  return <IconComponent className="w-8 h-8" />;
+                })()}
+                {itemType.name}
+              </h1>
               <p className="text-sm text-muted-foreground">
                 {items.length} {items.length === 1 ? 'item' : 'itens'} cadastrados
               </p>
