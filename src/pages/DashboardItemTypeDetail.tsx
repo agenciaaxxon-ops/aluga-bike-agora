@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, ArrowLeft, Package } from "lucide-react";
+import { Plus, ArrowLeft, Package, Pencil } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Item {
@@ -37,6 +37,7 @@ const DashboardItemTypeDetail = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
 
   // Form state
   const [name, setName] = useState("");
@@ -95,33 +96,47 @@ const DashboardItemTypeDetail = () => {
     if (!typeId) return;
 
     try {
-      // Buscar shop_id do item_type
-      const { data: typeData } = await supabase
-        .from('item_types')
-        .select('shop_id')
-        .eq('id', typeId)
-        .single();
+      if (editingItem) {
+        // Atualizar item existente
+        const { error } = await supabase.from('items').update({
+          name,
+          description: description || null,
+          status,
+          image_url: imageUrl || null
+        }).eq('id', editingItem.id);
 
-      if (!typeData) throw new Error('Tipo de item não encontrado');
+        if (error) throw error;
+        toast({ title: "Item atualizado com sucesso!" });
+      } else {
+        // Criar novo item
+        // Buscar shop_id do item_type
+        const { data: typeData } = await supabase
+          .from('item_types')
+          .select('shop_id')
+          .eq('id', typeId)
+          .single();
 
-      const { error } = await supabase.from('items').insert({
-        shop_id: typeData.shop_id,
-        item_type_id: typeId,
-        name,
-        description: description || null,
-        status,
-        image_url: imageUrl || null
-      });
+        if (!typeData) throw new Error('Tipo de item não encontrado');
 
-      if (error) throw error;
+        const { error } = await supabase.from('items').insert({
+          shop_id: typeData.shop_id,
+          item_type_id: typeId,
+          name,
+          description: description || null,
+          status,
+          image_url: imageUrl || null
+        });
 
-      toast({ title: "Item criado com sucesso!" });
+        if (error) throw error;
+        toast({ title: "Item criado com sucesso!" });
+      }
+
       setIsDialogOpen(false);
       resetForm();
       await loadItems();
     } catch (error: any) {
       toast({
-        title: "Erro ao criar item",
+        title: editingItem ? "Erro ao atualizar item" : "Erro ao criar item",
         description: error.message,
         variant: "destructive"
       });
@@ -133,6 +148,16 @@ const DashboardItemTypeDetail = () => {
     setDescription("");
     setStatus("disponível");
     setImageUrl("");
+    setEditingItem(null);
+  };
+
+  const handleEditItem = (item: Item) => {
+    setEditingItem(item);
+    setName(item.name);
+    setDescription(item.description || "");
+    setStatus(item.status);
+    setImageUrl(item.image_url || "");
+    setIsDialogOpen(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -188,7 +213,7 @@ const DashboardItemTypeDetail = () => {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Novo Item em {itemType.name}</DialogTitle>
+                <DialogTitle>{editingItem ? 'Editar Item' : `Novo Item em ${itemType.name}`}</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -239,11 +264,11 @@ const DashboardItemTypeDetail = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
                     Cancelar
                   </Button>
                   <Button type="submit" className="flex-1">
-                    Criar Item
+                    {editingItem ? 'Atualizar' : 'Criar Item'}
                   </Button>
                 </div>
               </form>
@@ -263,6 +288,7 @@ const DashboardItemTypeDetail = () => {
                     <TableHead>Nome</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Descrição</TableHead>
+                    <TableHead className="w-[100px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -272,6 +298,16 @@ const DashboardItemTypeDetail = () => {
                       <TableCell>{getStatusBadge(item.status)}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {item.description || '-'}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditItem(item)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))}

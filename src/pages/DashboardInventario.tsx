@@ -6,7 +6,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
-import { Plus, Package, ArrowRight, ArrowLeft, DollarSign } from "lucide-react";
+import { Plus, Package, ArrowRight, ArrowLeft, DollarSign, Pencil } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 
@@ -26,6 +26,7 @@ const DashboardInventario = () => {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [userShop, setUserShop] = useState<any>(null);
+  const [editingItemType, setEditingItemType] = useState<ItemType | null>(null);
   
   // Form state
   const [name, setName] = useState("");
@@ -79,25 +80,41 @@ const DashboardInventario = () => {
     if (!userShop) return;
 
     try {
-      const { error } = await supabase.from('item_types').insert({
-        shop_id: userShop.id,
-        name,
-        pricing_model: pricingModel,
-        price_per_minute: pricingModel === 'per_minute' ? parseFloat(pricePerMinute) : null,
-        price_per_day: pricingModel === 'per_day' ? parseFloat(pricePerDay) : null,
-        price_fixed: pricingModel === 'fixed_rate' ? parseFloat(priceFixed) : null,
-        icon
-      });
+      if (editingItemType) {
+        // Atualizar tipo existente
+        const { error } = await supabase.from('item_types').update({
+          name,
+          pricing_model: pricingModel,
+          price_per_minute: pricingModel === 'per_minute' ? parseFloat(pricePerMinute) : null,
+          price_per_day: pricingModel === 'per_day' ? parseFloat(pricePerDay) : null,
+          price_fixed: pricingModel === 'fixed_rate' ? parseFloat(priceFixed) : null,
+          icon
+        }).eq('id', editingItemType.id);
 
-      if (error) throw error;
+        if (error) throw error;
+        toast({ title: "Tipo de item atualizado com sucesso!" });
+      } else {
+        // Criar novo tipo
+        const { error } = await supabase.from('item_types').insert({
+          shop_id: userShop.id,
+          name,
+          pricing_model: pricingModel,
+          price_per_minute: pricingModel === 'per_minute' ? parseFloat(pricePerMinute) : null,
+          price_per_day: pricingModel === 'per_day' ? parseFloat(pricePerDay) : null,
+          price_fixed: pricingModel === 'fixed_rate' ? parseFloat(priceFixed) : null,
+          icon
+        });
 
-      toast({ title: "Tipo de item criado com sucesso!" });
+        if (error) throw error;
+        toast({ title: "Tipo de item criado com sucesso!" });
+      }
+
       setIsDialogOpen(false);
       resetForm();
       await loadItemTypes(userShop.id);
     } catch (error: any) {
       toast({
-        title: "Erro ao criar tipo de item",
+        title: editingItemType ? "Erro ao atualizar tipo de item" : "Erro ao criar tipo de item",
         description: error.message,
         variant: "destructive"
       });
@@ -111,6 +128,19 @@ const DashboardInventario = () => {
     setPricePerDay("30.00");
     setPriceFixed("50.00");
     setIcon("package");
+    setEditingItemType(null);
+  };
+
+  const handleEditItemType = (itemType: ItemType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItemType(itemType);
+    setName(itemType.name);
+    setPricingModel(itemType.pricing_model);
+    setPricePerMinute(itemType.price_per_minute?.toString() || "0.50");
+    setPricePerDay(itemType.price_per_day?.toString() || "30.00");
+    setPriceFixed(itemType.price_fixed?.toString() || "50.00");
+    setIcon(itemType.icon);
+    setIsDialogOpen(true);
   };
 
   const formatPrice = (itemType: ItemType) => {
@@ -149,9 +179,9 @@ const DashboardInventario = () => {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>Novo Tipo de Item</DialogTitle>
+                <DialogTitle>{editingItemType ? 'Editar Tipo de Item' : 'Novo Tipo de Item'}</DialogTitle>
                 <DialogDescription>
-                  Crie uma categoria para seus itens (ex: Bicicletas, Pranchas, Ferramentas)
+                  {editingItemType ? 'Atualize as informações do tipo de item' : 'Crie uma categoria para seus itens (ex: Bicicletas, Pranchas, Ferramentas)'}
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -243,11 +273,11 @@ const DashboardInventario = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button type="button" variant="outline" className="flex-1" onClick={() => setIsDialogOpen(false)}>
+                  <Button type="button" variant="outline" className="flex-1" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
                     Cancelar
                   </Button>
                   <Button type="submit" className="flex-1">
-                    Criar Tipo
+                    {editingItemType ? 'Atualizar' : 'Criar Tipo'}
                   </Button>
                 </div>
               </form>
@@ -277,7 +307,17 @@ const DashboardInventario = () => {
                         </CardDescription>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => handleEditItemType(itemType, e)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                    </div>
                   </div>
                 </CardHeader>
               </Card>
