@@ -80,7 +80,8 @@ const DashboardAssinatura = () => {
         description: "Sua assinatura foi cancelada com sucesso."
       });
       
-      setSubscriptionStatus('canceled');
+      // Recarrega os dados para atualizar o status
+      await checkOwnerAndLoadData();
     } catch (error) {
       console.error('Erro ao cancelar assinatura:', error);
       toast({
@@ -88,7 +89,39 @@ const DashboardAssinatura = () => {
         description: "Não foi possível cancelar a assinatura.",
         variant: "destructive"
       });
-    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReactivateSubscription = async () => {
+    try {
+      setLoading(true);
+      
+      // Atualiza o status diretamente no banco
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ subscription_status: 'active' })
+        .eq('id', user.id);
+      
+      if (error) throw error;
+      
+      toast({
+        title: "Assinatura reativada",
+        description: "Sua assinatura foi reativada com sucesso."
+      });
+      
+      // Recarrega os dados para atualizar o status
+      await checkOwnerAndLoadData();
+    } catch (error) {
+      console.error('Erro ao reativar assinatura:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível reativar a assinatura.",
+        variant: "destructive"
+      });
       setLoading(false);
     }
   };
@@ -170,6 +203,33 @@ const DashboardAssinatura = () => {
                         <AlertDialogCancel>Manter assinatura</AlertDialogCancel>
                         <AlertDialogAction onClick={handleCancelSubscription}>
                           Sim, cancelar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
+              )}
+
+              {subscriptionStatus === 'canceled' && (
+                <div className="pt-4 border-t">
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button className="w-full">
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Reativar Assinatura
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reativar assinatura?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Deseja reativar sua assinatura e voltar a ter acesso aos recursos premium?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleReactivateSubscription}>
+                          Sim, reativar
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

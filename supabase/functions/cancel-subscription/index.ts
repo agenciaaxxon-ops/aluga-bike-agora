@@ -12,7 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(
+    // Cliente para autenticação
+    const supabaseAuth = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
@@ -28,19 +29,32 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
 
     if (userError || !user) {
       throw new Error('Usuário não autenticado');
     }
 
+    // Cliente com service role para atualizar dados
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      }
+    );
+
     // Atualiza o status da assinatura no banco de dados
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({ subscription_status: 'canceled' })
       .eq('id', user.id);
 
     if (updateError) {
+      console.error('Erro ao atualizar perfil:', updateError);
       throw updateError;
     }
 
