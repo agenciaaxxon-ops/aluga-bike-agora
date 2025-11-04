@@ -329,111 +329,60 @@ const Dashboard = () => {
   
   const handleEndRental = async (rentalId: string) => {
     try {
+      // Chamar edge function para cálculo seguro no backend
+      const { data, error } = await supabase.functions.invoke('finalize-rental', {
+        body: { rentalId }
+      });
+
+      if (error) throw error;
+
+      const { totalAmount, overageMinutes, actualEndTime } = data;
+
+      // Buscar dados do rental para o relatório
       const rentalToEnd = rentals.find(r => r.id === rentalId);
       if (!rentalToEnd) return;
 
-      const actualEndTime = new Date();
-      
-      // Buscar dados do item e seu tipo
-      const { data: itemData, error: itemError } = await supabase
+      const { data: itemData } = await supabase
         .from('items')
         .select('*, item_type:item_types(*)')
         .eq('id', rentalToEnd.item_id)
         .single();
-      
-      if (itemError || !itemData || !itemData.item_type) {
-        toast({
-          title: "Erro",
-          description: "Não foi possível buscar informações do item.",
-          variant: "destructive"
+
+      if (itemData) {
+        const startTime = new Date(rentalToEnd.start_time);
+        const scheduledEndTime = new Date(rentalToEnd.end_time);
+        const actualEnd = new Date(actualEndTime);
+        const totalMinutes = Math.floor((actualEnd.getTime() - startTime.getTime()) / 60000);
+        const scheduledMinutes = Math.floor((scheduledEndTime.getTime() - startTime.getTime()) / 60000);
+
+        setRentalReport({
+          clientName: rentalToEnd.client_name,
+          itemTypeName: itemData.item_type.name,
+          initialDuration: scheduledMinutes,
+          overtimeDuration: overageMinutes,
+          totalMinutes,
+          pricePerUnit: itemData.item_type.price_per_minute || 0,
+          initialCost: totalAmount - (overageMinutes * (itemData.item_type.price_per_minute || 0)),
+          overtimeCost: overageMinutes * (itemData.item_type.price_per_minute || 0),
+          totalAmount
         });
-        return;
+        setIsReportModalOpen(true);
       }
 
-      const startTime = new Date(rentalToEnd.start_time);
-      const scheduledEndTime = new Date(rentalToEnd.end_time);
-      const totalMinutes = Math.floor((actualEndTime.getTime() - startTime.getTime()) / 60000);
-      const scheduledMinutes = Math.floor((scheduledEndTime.getTime() - startTime.getTime()) / 60000);
-      const overtimeMinutes = Math.max(0, totalMinutes - scheduledMinutes);
-      
-      const pricingModel = itemData.item_type.pricing_model;
-      let totalAmount = 0;
-      let initialCost = 0;
-      let overtimeCost = 0;
-      let pricePerUnit = 0;
-
-      switch (pricingModel) {
-        case 'per_minute':
-          pricePerUnit = itemData.item_type.price_per_minute || 0;
-          // Cobra pelo tempo real usado, seja menor ou maior que o contratado
-          totalAmount = totalMinutes * pricePerUnit;
-          initialCost = Math.min(totalMinutes, scheduledMinutes) * pricePerUnit;
-          overtimeCost = overtimeMinutes * pricePerUnit;
-          break;
-
-        case 'per_day':
-          pricePerUnit = itemData.item_type.price_per_day || 0;
-          const totalDays = Math.ceil(totalMinutes / (24 * 60));
-          totalAmount = totalDays * pricePerUnit;
-          initialCost = totalAmount;
-          overtimeCost = 0;
-          break;
-
-        case 'fixed_rate':
-          pricePerUnit = itemData.item_type.price_fixed || 0;
-          // Taxa fixa: se devolver antes cobra proporcional, se exceder cobra taxa + extra
-          if (totalMinutes <= scheduledMinutes) {
-            // Devolveu antes ou no prazo: cobra proporcional
-            const proportion = totalMinutes / scheduledMinutes;
-            totalAmount = pricePerUnit * proportion;
-            initialCost = totalAmount;
-            overtimeCost = 0;
-          } else {
-            // Excedeu: cobra taxa fixa + tempo extra por minuto
-            const extraMinutes = totalMinutes - scheduledMinutes;
-            const pricePerMinute = pricePerUnit / scheduledMinutes; // Calcula preço por minuto baseado na taxa
-            overtimeCost = extraMinutes * pricePerMinute;
-            totalAmount = pricePerUnit + overtimeCost;
-            initialCost = pricePerUnit;
-          }
-          break;
-      }
-
-      const { error: updateError } = await supabase.from('rentals').update({
-        status: 'Finalizado', 
-        actual_end_time: actualEndTime.toISOString(), 
-        total_cost: totalAmount
-      }).eq('id', rentalId);
-      
-      if (updateError) throw updateError;
-
-      // Devolver item ao estoque
-      const { error: itemUpdateError } = await supabase
-        .from('items')
-        .update({ status: 'disponível' })
-        .eq('id', rentalToEnd.item_id);
-      
-      if (itemUpdateError) throw itemUpdateError;
-
-      setRentalReport({
-        clientName: rentalToEnd.client_name, 
-        itemTypeName: itemData.item_type.name,
-        initialDuration: scheduledMinutes, 
-        overtimeDuration: overtimeMinutes, 
-        totalMinutes, 
-        pricePerUnit,
-        initialCost, 
-        overtimeCost, 
-        totalAmount
-      });
-      setIsReportModalOpen(true);
       setEndConfirmForId(null);
       await loadRentals(userShop.id);
-      
-      toast({ title: "Locação finalizada com sucesso!" });
+
+      toast({
+        title: "Locação finalizada",
+        description: `Valor total: R$ ${totalAmount.toFixed(2)}${overageMinutes > 0 ? ` (${overageMinutes} min de acréscimo)` : ''}`,
+      });
     } catch (error) {
-      console.error('Erro:', error);
-      toast({ title: "Erro ao finalizar locação", variant: "destructive" });
+      console.error('Erro ao finalizar aluguel:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível finalizar o aluguel",
+        variant: "destructive",
+      });
     }
   };
 

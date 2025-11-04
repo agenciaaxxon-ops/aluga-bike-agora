@@ -97,29 +97,41 @@ const DashboardAssinatura = () => {
     try {
       setLoading(true);
       
-      // Atualiza o status diretamente no banco
+      // Redireciona para o fluxo de pagamento em vez de reativar diretamente
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { error } = await supabase
+      // Busca email do usuário
+      const { data: profile } = await supabase
         .from('profiles')
-        .update({ subscription_status: 'active' })
-        .eq('id', user.id);
-      
-      if (error) throw error;
-      
-      toast({
-        title: "Assinatura reativada",
-        description: "Sua assinatura foi reativada com sucesso."
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile) {
+        throw new Error('Perfil não encontrado');
+      }
+
+      // Cria um novo link de pagamento
+      const { data, error } = await supabase.functions.invoke('create-payment-link', {
+        body: { 
+          userId: user.id,
+          userEmail: user.email,
+          mode: 'production'
+        }
       });
-      
-      // Recarrega os dados para atualizar o status
-      await checkOwnerAndLoadData();
+
+      if (error) throw error;
+
+      // Redireciona para o pagamento
+      if (data?.paymentUrl) {
+        window.location.href = data.paymentUrl;
+      }
     } catch (error) {
       console.error('Erro ao reativar assinatura:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível reativar a assinatura.",
+        description: "Não foi possível criar o link de pagamento. Verifique se seu CPF/CNPJ está válido nas configurações.",
         variant: "destructive"
       });
       setLoading(false);

@@ -88,7 +88,7 @@ const Onboarding = () => {
           </div>
           <h1 className="text-4xl font-bold text-foreground mb-3">Complete seu Cadastro</h1>
           <p className="text-muted-foreground text-base">
-            Seu trial de 1 hora expirou. Complete as informações da sua loja para continuar.
+            Seu trial de 20 minutos expirou. Complete as informações da sua loja para continuar.
           </p>
         </div>
 

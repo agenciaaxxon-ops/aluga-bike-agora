@@ -88,16 +88,19 @@ serve(async (req) => {
 
     console.log('Criando link de pagamento para:', userEmail);
 
-    // Sanitiza e valida taxId (CPF/CNPJ)
-    const rawTaxId = shop.document || '';
-    const sanitizedTaxId = onlyDigits(rawTaxId);
-    let taxId = sanitizedTaxId;
-    let usedFallback = false;
+    // Sanitizar o documento
+    let sanitizedDocument = shop.document ? onlyDigits(shop.document) : '';
     
-    if (!isValidCPF(sanitizedTaxId)) {
-      console.log('CPF inválido ou não fornecido, usando fallback');
-      taxId = '52998224725'; // CPF válido para testes
-      usedFallback = true;
+    // Validar CPF - Retorna erro se inválido
+    if (!sanitizedDocument || !isValidCPF(sanitizedDocument)) {
+      console.error(`Invalid or missing document (CPF/CNPJ) for user ${userId}`);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Documento inválido. Por favor, atualize seu CPF/CNPJ nas configurações antes de continuar.',
+          code: 'INVALID_DOCUMENT'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
     }
 
     // Sanitiza telefone
@@ -108,7 +111,7 @@ serve(async (req) => {
       email: userEmail,
       name: profile?.store_name || shop.name || 'Loja Teste',
       cellphone,
-      taxId,
+      taxId: sanitizedDocument,
       metadata: {
         userId,
       }
@@ -118,8 +121,7 @@ serve(async (req) => {
       email: customerData.email, 
       name: customerData.name,
       cellphone: customerData.cellphone,
-      taxId: `${taxId.substring(0, 3)}****${taxId.substring(taxId.length - 3)}`,
-      usedFallback 
+      taxId: `${sanitizedDocument.substring(0, 3)}****${sanitizedDocument.substring(sanitizedDocument.length - 3)}`
     });
 
     // Primeiro, cria o cliente no AbacatePay

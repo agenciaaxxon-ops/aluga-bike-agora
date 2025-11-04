@@ -160,7 +160,7 @@ const Login = () => {
 
         toast({
           title: "Cadastro concluído!",
-          description: "Você ganhou 5 minutos de trial gratuito para testar. Faça login para começar!",
+          description: "Você ganhou 20 minutos de trial gratuito para testar. Faça login para começar!",
         });
 
         // Muda para a aba de login e limpa os campos
