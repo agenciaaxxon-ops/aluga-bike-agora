@@ -86,7 +86,7 @@ serve(async (req) => {
     const { error: updateError } = await supabase
       .from('rentals')
       .update({
-        status: 'Concluído',
+        status: 'Finalizado',
         actual_end_time: actualEndTime.toISOString(),
         total_cost: totalAmount,
         total_overage_minutes: overageMinutes
