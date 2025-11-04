@@ -333,12 +333,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_password: { Args: { password: string }; Returns: string }
       is_shop_owner: {
         Args: { _shop_id: string; _user_id: string }
         Returns: boolean
       }
       is_team_member: {
         Args: { _shop_id: string; _user_id: string }
+        Returns: boolean
+      }
+      verify_password: {
+        Args: { hash: string; password: string }
         Returns: boolean
       }
     }

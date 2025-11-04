@@ -42,9 +42,22 @@ serve(async (req) => {
       );
     }
 
-    // Comparar senha fornecida com a armazenada (em plain text por enquanto)
-    // TODO: Em produção, usar bcrypt para hash
-    const isValid = password === shop.admin_password;
+    // Verificar senha usando a função de hash bcrypt
+    const { data: verifyResult, error: verifyError } = await supabase
+      .rpc('verify_password', {
+        password: password,
+        hash: shop.admin_password
+      });
+
+    if (verifyError) {
+      console.error('Error verifying password:', verifyError);
+      return new Response(
+        JSON.stringify({ valid: false, error: 'Error verifying password' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    const isValid = verifyResult === true;
 
     console.log(`Admin password verification for shop ${shopId}: ${isValid ? 'SUCCESS' : 'FAILED'}`);
 
