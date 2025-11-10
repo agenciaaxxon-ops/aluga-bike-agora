@@ -22,7 +22,8 @@ import {
   DollarSign,
   CreditCard,
   FileText,
-  Shield
+  Shield,
+  MapPin
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import QRCode from "qrcode";
@@ -32,6 +33,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { TrialBanner } from "@/components/TrialBanner";
 import OnboardingTour from "@/components/OnboardingTour";
+import { RentalLocationMap } from "@/components/RentalLocationMap";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Rental = Database["public"]["Tables"]["rentals"]["Row"];
 
@@ -77,6 +81,10 @@ const Dashboard = () => {
   const [isAdminDialogOpen, setIsAdminDialogOpen] = useState(false);
   const [showOnboardingTour, setShowOnboardingTour] = useState(false);
   const [hasCompletedTutorial, setHasCompletedTutorial] = useState(true);
+  
+  // Estados para o mapa de localização
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [selectedRentalForMap, setSelectedRentalForMap] = useState<any>(null);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -688,6 +696,31 @@ const Dashboard = () => {
                         <span>{rental.client_phone}</span>
                       </div>
                     )}
+                    
+                    {rental.latitude && rental.longitude && (
+                      <div className="space-y-1">
+                        <div className="flex items-center text-sm">
+                          <MapPin className="w-4 h-4 mr-2 text-emerald-600" />
+                          <button 
+                            onClick={() => {
+                              setSelectedRentalForMap(rental);
+                              setMapModalOpen(true);
+                            }}
+                            className="text-emerald-600 hover:underline font-medium"
+                          >
+                            Ver localização no mapa
+                          </button>
+                        </div>
+                        {rental.last_location_update && (
+                          <div className="text-xs text-muted-foreground pl-6">
+                            Atualizado {formatDistanceToNow(new Date(rental.last_location_update), { 
+                              locale: ptBR, 
+                              addSuffix: true 
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <div className={`flex items-center justify-between text-sm transition-all duration-300 ${isOvertime ? 'text-destructive font-bold scale-105' : ''}`}>
                       <span className="text-muted-foreground">Tempo:</span>
                       <span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span>
@@ -745,6 +778,25 @@ const Dashboard = () => {
               <img src={qrDataUrl} alt="QR Code" className="w-56 h-56" />
               <div className="text-xs break-all text-muted-foreground text-center">{qrLink}</div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={mapModalOpen} onOpenChange={setMapModalOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Localização de {selectedRentalForMap?.client_name}</DialogTitle>
+            <DialogDescription>
+              Rastreamento em tempo real da localização do cliente
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRentalForMap?.latitude && selectedRentalForMap?.longitude && (
+            <RentalLocationMap
+              latitude={selectedRentalForMap.latitude}
+              longitude={selectedRentalForMap.longitude}
+              clientName={selectedRentalForMap.client_name}
+              lastUpdate={selectedRentalForMap.last_location_update}
+            />
           )}
         </DialogContent>
       </Dialog>
