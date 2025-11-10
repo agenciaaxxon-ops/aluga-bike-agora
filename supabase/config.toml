@@ -1,5 +1,8 @@
 project_id = "bdtjpegklvjjuifpsikg"
 
+[functions.update-rental-location]
+verify_jwt = false
+
 [functions.extend_rental_time]
 verify_jwt = false
 

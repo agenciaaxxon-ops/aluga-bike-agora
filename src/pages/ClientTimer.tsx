@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,6 +61,11 @@ const ClientTimer = () => {
   // Estado para controlar a abertura do modal
   const [isAddTimeModalOpen, setIsAddTimeModalOpen] = useState(false);
 
+  // Estados para rastreamento de localização
+  const [locationStatus, setLocationStatus] = useState<'inactive' | 'active' | 'denied' | 'error'>('inactive');
+  const watchIdRef = useRef<number | null>(null);
+  const lastLocationRef = useRef<{ lat: number; lng: number; time: number } | null>(null);
+
   useEffect(() => {
     if (rentalId) {
       loadRentalData();
@@ -93,6 +98,91 @@ const ClientTimer = () => {
     const interval = setInterval(calculateTime, 1000);
     return () => clearInterval(interval);
   }, [rental]);
+
+  // Effect para rastreamento de localização
+  useEffect(() => {
+    if (!rental || rental.status !== 'Ativo') return;
+
+    // Verificar se o navegador suporta geolocalização
+    if (!navigator.geolocation) {
+      console.log('Geolocalização não é suportada neste navegador');
+      setLocationStatus('error');
+      return;
+    }
+
+    const startTracking = () => {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          updateLocationOnServer(latitude, longitude);
+          setLocationStatus('active');
+        },
+        (error) => {
+          console.error('Erro ao obter localização:', error);
+          if (error.code === error.PERMISSION_DENIED) {
+            setLocationStatus('denied');
+          } else {
+            setLocationStatus('error');
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    };
+
+    startTracking();
+
+    // Cleanup: parar de rastrear quando o componente desmontar
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [rental]);
+
+  const updateLocationOnServer = async (latitude: number, longitude: number) => {
+    if (!rental) return;
+
+    const now = Date.now();
+    const lastLocation = lastLocationRef.current;
+
+    // Throttle: só enviar se mudou significativamente ou passou tempo suficiente
+    if (lastLocation) {
+      const timeDiff = now - lastLocation.time;
+      const distance = Math.sqrt(
+        Math.pow(latitude - lastLocation.lat, 2) + 
+        Math.pow(longitude - lastLocation.lng, 2)
+      ) * 111000; // Conversão aproximada para metros
+
+      // Só enviar se passou mais de 30 segundos OU se mudou mais de 10 metros
+      if (timeDiff < 30000 && distance < 10) {
+        return;
+      }
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('update-rental-location', {
+        body: {
+          access_code: rental.access_code,
+          latitude,
+          longitude
+        }
+      });
+
+      if (error) {
+        console.error('Erro ao atualizar localização:', error);
+      } else {
+        // Atualizar última localização enviada
+        lastLocationRef.current = { lat: latitude, lng: longitude, time: now };
+      }
+    } catch (error) {
+      console.error('Erro ao enviar localização:', error);
+    }
+  };
 
   const loadRentalData = async () => {
     try {
@@ -267,6 +357,43 @@ const ClientTimer = () => {
           <h1 className="text-2xl font-bold text-foreground mb-1">{rental.store_name}</h1>
           <p className="text-muted-foreground">Acompanhe seu aluguel</p>
         </div>
+
+        {/* Indicador de Localização */}
+        {locationStatus !== 'inactive' && (
+          <Card className="mb-4 border-0 shadow-sm">
+            <CardContent className="py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MapPin className={`w-4 h-4 ${
+                    locationStatus === 'active' ? 'text-green-500' : 
+                    locationStatus === 'denied' ? 'text-destructive' : 
+                    'text-warning'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    {locationStatus === 'active' && 'Localização ativa'}
+                    {locationStatus === 'denied' && 'Permissão negada'}
+                    {locationStatus === 'error' && 'Erro na localização'}
+                  </span>
+                </div>
+                <div className={`w-2 h-2 rounded-full ${
+                  locationStatus === 'active' ? 'bg-green-500 animate-pulse' : 
+                  locationStatus === 'denied' ? 'bg-destructive' : 
+                  'bg-warning'
+                }`} />
+              </div>
+              {locationStatus === 'active' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Sua localização está sendo compartilhada com a loja
+                </p>
+              )}
+              {locationStatus === 'denied' && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ative a permissão de localização nas configurações do navegador
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="mb-6 border-0 shadow-lg">
           <CardHeader>
