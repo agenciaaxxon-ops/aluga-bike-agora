@@ -1,5 +1,5 @@
+import { useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -25,17 +25,39 @@ export const RentalLocationMap = ({
   clientName, 
   lastUpdate 
 }: RentalLocationMapProps) => {
+  const mapRef = useRef<L.Map | null>(null);
+  
+  // Validação de coordenadas
+  if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center bg-muted rounded-lg">
+        <p className="text-muted-foreground">Coordenadas inválidas ou não disponíveis</p>
+      </div>
+    );
+  }
+
   const formattedUpdate = lastUpdate 
     ? formatDistanceToNow(new Date(lastUpdate), { locale: ptBR, addSuffix: true })
     : 'Sem atualização recente';
 
+  // useEffect para invalidar tamanho do mapa após animação do Dialog
+  useEffect(() => {
+    if (mapRef.current) {
+      setTimeout(() => {
+        mapRef.current?.invalidateSize();
+      }, 300);
+    }
+  }, []);
+
   return (
     <div className="w-full">
       <MapContainer
+        key={`${latitude}-${longitude}`}
         center={[latitude, longitude]}
         zoom={15}
         style={{ height: '400px', width: '100%', borderRadius: '8px' }}
         className="z-0"
+        ref={mapRef}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

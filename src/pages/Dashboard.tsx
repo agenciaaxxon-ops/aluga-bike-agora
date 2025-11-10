@@ -783,7 +783,7 @@ const Dashboard = () => {
       </Dialog>
 
       <Dialog open={mapModalOpen} onOpenChange={setMapModalOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl min-h-[500px]">
           <DialogHeader>
             <DialogTitle>Localização de {selectedRentalForMap?.client_name}</DialogTitle>
             <DialogDescription>
