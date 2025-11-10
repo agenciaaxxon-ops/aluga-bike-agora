@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -11,6 +11,19 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
+
+// Componente interno para invalidar o tamanho do mapa
+const MapInvalidator = () => {
+  const map = useMap();
+  
+  useEffect(() => {
+    setTimeout(() => {
+      map.invalidateSize();
+    }, 300);
+  }, [map]);
+  
+  return null;
+};
 
 interface RentalLocationMapProps {
   latitude: number;
@@ -25,8 +38,6 @@ export const RentalLocationMap = ({
   clientName, 
   lastUpdate 
 }: RentalLocationMapProps) => {
-  const mapRef = useRef<L.Map | null>(null);
-  
   // Validação de coordenadas
   if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
     return (
@@ -40,15 +51,6 @@ export const RentalLocationMap = ({
     ? formatDistanceToNow(new Date(lastUpdate), { locale: ptBR, addSuffix: true })
     : 'Sem atualização recente';
 
-  // useEffect para invalidar tamanho do mapa após animação do Dialog
-  useEffect(() => {
-    if (mapRef.current) {
-      setTimeout(() => {
-        mapRef.current?.invalidateSize();
-      }, 300);
-    }
-  }, []);
-
   return (
     <div className="w-full">
       <MapContainer
@@ -57,8 +59,8 @@ export const RentalLocationMap = ({
         zoom={15}
         style={{ height: '400px', width: '100%', borderRadius: '8px' }}
         className="z-0"
-        ref={mapRef}
       >
+        <MapInvalidator />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
