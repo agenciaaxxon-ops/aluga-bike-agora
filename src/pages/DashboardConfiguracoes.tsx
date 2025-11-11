@@ -7,6 +7,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { ArrowLeft, Save } from "lucide-react";
+import { z } from "zod";
+
+// Utilidades de telefone (Brasil)
+const sanitizePhone = (value: string) => value.replace(/\D/g, "");
+const formatBRPhone = (raw: string) => {
+  const digits = sanitizePhone(raw).slice(0, 11); // máx 11 dígitos
+  if (digits.length <= 2) return digits; // DDD incompleto
+  if (digits.length <= 6) return `(${digits.slice(0,2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) return `(${digits.slice(0,2)}) ${digits.slice(2,6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0,2)}) ${digits.slice(2,7)}-${digits.slice(7,11)}`; // 11 dígitos (celular)
+};
+
+const phoneSchema = z
+  .string()
+  .transform((val) => sanitizePhone(val))
+  .refine((val) => val.length === 10 || val.length === 11, {
+    message: "Informe DDD + número com 10 ou 11 dígitos",
+  });
 
 const DashboardConfiguracoes = () => {
   const navigate = useNavigate();
@@ -43,7 +61,7 @@ const DashboardConfiguracoes = () => {
         setShopId(shop.id);
         setFormData({
           name: shop.name || "",
-          contact_phone: shop.contact_phone || "",
+          contact_phone: formatBRPhone(shop.contact_phone || ""),
           address: shop.address || ""
         });
       }
@@ -62,20 +80,34 @@ const DashboardConfiguracoes = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     try {
       setSaving(true);
+
+      // Validação e sanitização do telefone
+      const parsed = phoneSchema.safeParse(formData.contact_phone);
+      if (!parsed.success) {
+        toast({
+          title: "Telefone inválido",
+          description: parsed.error.issues[0]?.message || "Use DDD + número (10 ou 11 dígitos)",
+          variant: "destructive",
+        });
+        return;
+      }
+      const sanitizedPhone = parsed.data; // apenas números
 
       const { error } = await supabase
         .from('shops')
         .update({
-          name: formData.name,
-          contact_phone: formData.contact_phone,
-          address: formData.address
+          name: formData.name.trim(),
+          contact_phone: sanitizedPhone,
+          address: formData.address.trim()
         })
         .eq('id', shopId);
 
       if (error) throw error;
+
+      // Mantém a máscara no input após salvar
+      setFormData((prev) => ({ ...prev, contact_phone: formatBRPhone(sanitizedPhone) }));
 
       toast({
         title: "Configurações salvas!",
@@ -146,10 +178,14 @@ const DashboardConfiguracoes = () => {
                   <Input
                     id="phone"
                     value={formData.contact_phone}
-                    onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                    onChange={(e) => {
+                      const masked = formatBRPhone(e.target.value);
+                      setFormData({ ...formData, contact_phone: masked });
+                    }}
                     placeholder="(00) 00000-0000"
                     required
                   />
+                  <p className="text-xs text-muted-foreground">Salvamos apenas números (DDD+telefone). Não inclua +55.</p>
                 </div>
 
                 <div className="space-y-2">
