@@ -111,17 +111,27 @@ const ClientTimer = () => {
     }
 
     const startTracking = () => {
+      console.log('[ClientTimer] Starting location tracking for rental:', rental.id);
       watchIdRef.current = navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
+          const { latitude, longitude, accuracy } = position.coords;
+          console.log('[ClientTimer] Location obtained:', { latitude, longitude, accuracy });
           updateLocationOnServer(latitude, longitude);
           setLocationStatus('active');
         },
         (error) => {
-          console.error('Erro ao obter localização:', error);
+          console.error('[ClientTimer] Geolocation error:', {
+            code: error.code,
+            message: error.message,
+            PERMISSION_DENIED: error.PERMISSION_DENIED,
+            POSITION_UNAVAILABLE: error.POSITION_UNAVAILABLE,
+            TIMEOUT: error.TIMEOUT
+          });
           if (error.code === error.PERMISSION_DENIED) {
+            console.log('[ClientTimer] Location permission denied');
             setLocationStatus('denied');
           } else {
+            console.log('[ClientTimer] Location error (not permission)');
             setLocationStatus('error');
           }
         },
@@ -160,12 +170,20 @@ const ClientTimer = () => {
 
       // Só enviar se passou mais de 30 segundos OU se mudou mais de 10 metros
       if (timeDiff < 30000 && distance < 10) {
+        console.log('[ClientTimer] Location update throttled - too soon or too close');
         return;
       }
     }
 
+    console.log('[ClientTimer] Updating location on server:', { 
+      latitude, 
+      longitude, 
+      access_code: rental.access_code,
+      rental_id: rental.id 
+    });
+
     try {
-      const { error } = await supabase.functions.invoke('update-rental-location', {
+      const { data, error } = await supabase.functions.invoke('update-rental-location', {
         body: {
           access_code: rental.access_code,
           latitude,
@@ -174,13 +192,14 @@ const ClientTimer = () => {
       });
 
       if (error) {
-        console.error('Erro ao atualizar localização:', error);
+        console.error('[ClientTimer] Error updating location:', error);
       } else {
+        console.log('[ClientTimer] Location updated successfully:', data);
         // Atualizar última localização enviada
         lastLocationRef.current = { lat: latitude, lng: longitude, time: now };
       }
     } catch (error) {
-      console.error('Erro ao enviar localização:', error);
+      console.error('[ClientTimer] Exception when sending location:', error);
     }
   };
 

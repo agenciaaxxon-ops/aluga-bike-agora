@@ -277,8 +277,10 @@ const Dashboard = () => {
     const formData = new FormData(event.currentTarget);
     const clientName = formData.get("clientName") as string;
     const clientPhone = formData.get("clientPhone") as string;
+    const clientCpf = formData.get("clientCpf") as string;
+    const clientAddress = formData.get("clientAddress") as string;
     
-    // Buscar o item_type para saber o pricing_model
+    // Buscar o item_type para saber o pricing_model e desnormalizar dados
     const selectedType = itemTypes.find(t => t.id === selectedItemType);
     if (!selectedType) {
       toast({ 
@@ -291,26 +293,56 @@ const Dashboard = () => {
 
     const startTime = new Date();
     let endTime: Date;
+    let durationMinutes = 0;
+    let initialCost = 0;
+    let blockDurationMinutes = 0;
 
-    // Calcular end_time baseado no pricing_model
+    // Calcular end_time, custo inicial e duração baseado no pricing_model
     if (selectedType.pricing_model === 'per_day') {
       const days = parseInt(formData.get("days") as string, 10);
-      endTime = new Date(startTime.getTime() + days * 24 * 60 * 60 * 1000);
+      durationMinutes = days * 24 * 60;
+      initialCost = days * (selectedType.price_per_day || 0);
+      endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
+    } else if (selectedType.pricing_model === 'per_minute') {
+      durationMinutes = parseInt(formData.get("duration") as string, 10);
+      initialCost = durationMinutes * (selectedType.price_per_minute || 0);
+      endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
+    } else if (selectedType.pricing_model === 'block') {
+      const blocks = parseInt(formData.get("blocks") as string, 10) || 1;
+      const blockUnit = selectedType.block_duration_unit || 'hour';
+      const blockValue = selectedType.block_duration_value || 1;
+      blockDurationMinutes = blockUnit === 'day' ? blockValue * 1440 : blockValue * 60;
+      durationMinutes = blocks * blockDurationMinutes;
+      initialCost = blocks * (selectedType.price_block || 0);
+      endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
     } else {
-      // per_minute e fixed_rate usam duration em minutos
-      const duration = parseInt(formData.get("duration") as string, 10);
-      endTime = new Date(startTime.getTime() + duration * 60 * 1000);
+      // fixed_rate
+      durationMinutes = parseInt(formData.get("duration") as string, 10);
+      initialCost = selectedType.price_fixed || 0;
+      endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
     }
 
     try {
+      // Desnormalizar todos os dados de precificação no rental
       const { data, error } = await supabase.from('rentals').insert({
         shop_id: userShop.id, 
         item_id: selectedItem,
         client_name: clientName, 
         client_phone: clientPhone,
+        client_cpf: clientCpf,
+        client_address: clientAddress,
         start_time: startTime.toISOString(), 
         end_time: endTime.toISOString(), 
-        status: 'Ativo'
+        status: 'Ativo',
+        initial_duration_minutes: durationMinutes,
+        initial_cost: initialCost,
+        pricing_model: selectedType.pricing_model,
+        price_per_minute: selectedType.price_per_minute,
+        price_per_day: selectedType.price_per_day,
+        price_block: selectedType.price_block,
+        price_fixed: selectedType.price_fixed,
+        block_duration_minutes: blockDurationMinutes || null,
+        total_extended_minutes: 0
       }).select().single();
 
       if (error) throw error;
@@ -382,7 +414,7 @@ const Dashboard = () => {
 
       toast({
         title: "Locação finalizada",
-        description: `Valor total: R$ ${(totalAmount || 0).toFixed(2)}${overageMinutes > 0 ? ` (${overageMinutes} min de acréscimo)` : ''}`,
+        description: `Valor total: R$ ${data.totalAmount.toFixed(2)}${data.overageMinutes > 0 ? ` (${data.overageMinutes} min de acréscimo)` : ''}`,
       });
     } catch (error) {
       console.error('Erro ao finalizar aluguel:', error);

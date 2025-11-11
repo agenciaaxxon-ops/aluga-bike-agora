@@ -162,6 +162,8 @@ export type Database = {
           access_code: string
           actual_end_time: string | null
           block_duration_minutes: number | null
+          client_address: string | null
+          client_cpf: string | null
           client_name: string | null
           client_phone: string | null
           created_at: string | null
@@ -172,6 +174,9 @@ export type Database = {
           initial_duration_minutes: number | null
           item_id: string | null
           last_extension_at: string | null
+          last_location_update: string | null
+          latitude: number | null
+          longitude: number | null
           price_block: number | null
           price_per_day: number | null
           price_per_minute: number | null
@@ -180,12 +185,15 @@ export type Database = {
           start_time: string
           status: string
           total_cost: number | null
+          total_extended_minutes: number
           total_overage_minutes: number
         }
         Insert: {
           access_code?: string
           actual_end_time?: string | null
           block_duration_minutes?: number | null
+          client_address?: string | null
+          client_cpf?: string | null
           client_name?: string | null
           client_phone?: string | null
           created_at?: string | null
@@ -196,6 +204,9 @@ export type Database = {
           initial_duration_minutes?: number | null
           item_id?: string | null
           last_extension_at?: string | null
+          last_location_update?: string | null
+          latitude?: number | null
+          longitude?: number | null
           price_block?: number | null
           price_per_day?: number | null
           price_per_minute?: number | null
@@ -204,12 +215,15 @@ export type Database = {
           start_time: string
           status?: string
           total_cost?: number | null
+          total_extended_minutes?: number
           total_overage_minutes?: number
         }
         Update: {
           access_code?: string
           actual_end_time?: string | null
           block_duration_minutes?: number | null
+          client_address?: string | null
+          client_cpf?: string | null
           client_name?: string | null
           client_phone?: string | null
           created_at?: string | null
@@ -220,6 +234,9 @@ export type Database = {
           initial_duration_minutes?: number | null
           item_id?: string | null
           last_extension_at?: string | null
+          last_location_update?: string | null
+          latitude?: number | null
+          longitude?: number | null
           price_block?: number | null
           price_per_day?: number | null
           price_per_minute?: number | null
@@ -228,6 +245,7 @@ export type Database = {
           start_time?: string
           status?: string
           total_cost?: number | null
+          total_extended_minutes?: number
           total_overage_minutes?: number
         }
         Relationships: [
@@ -341,6 +359,10 @@ export type Database = {
       is_team_member: {
         Args: { _shop_id: string; _user_id: string }
         Returns: boolean
+      }
+      update_rental_location: {
+        Args: { p_access_code: string; p_latitude: number; p_longitude: number }
+        Returns: undefined
       }
       verify_password: {
         Args: { hash: string; password: string }

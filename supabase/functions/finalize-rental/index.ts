@@ -25,10 +25,23 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar o aluguel
+    // Buscar o aluguel com dados do item_type para fallback
     const { data: rental, error: fetchError } = await supabase
       .from('rentals')
-      .select('*')
+      .select(`
+        *,
+        item:items(
+          item_type:item_types(
+            pricing_model,
+            price_per_minute,
+            price_per_day,
+            price_fixed,
+            price_block,
+            block_duration_unit,
+            block_duration_value
+          )
+        )
+      `)
       .eq('id', rentalId)
       .single();
 
@@ -56,25 +69,40 @@ serve(async (req) => {
     let totalAmount = 0;
     let overageMinutes = 0;
 
-    const pricingModel = rental.pricing_model;
+    // Usar dados do rental, com fallback para item_type se necessário
+    const itemType = rental.item?.item_type;
+    const pricingModel = rental.pricing_model || itemType?.pricing_model || 'per_minute';
+    const pricePerMinute = rental.price_per_minute ?? itemType?.price_per_minute ?? 0;
+    const pricePerDay = rental.price_per_day ?? itemType?.price_per_day ?? 0;
+    const priceFixed = rental.price_fixed ?? itemType?.price_fixed ?? 0;
+    const priceBlock = rental.price_block ?? itemType?.price_block ?? 0;
+    
+    // Calcular block_duration_minutes se necessário
+    let blockDurationMinutes = rental.block_duration_minutes;
+    if (!blockDurationMinutes && itemType) {
+      const unit = itemType.block_duration_unit || 'hour';
+      const value = itemType.block_duration_value || 1;
+      blockDurationMinutes = unit === 'day' ? value * 1440 : value * 60;
+    }
+
+    console.log(`Finalizing rental ${rentalId}: model=${pricingModel}, minutes=${totalMinutes}`);
 
     if (pricingModel === 'per_minute') {
-      totalAmount = totalMinutes * (rental.price_per_minute || 0);
+      totalAmount = totalMinutes * pricePerMinute;
     } else if (pricingModel === 'per_day') {
       const totalDays = Math.ceil(totalMinutes / (24 * 60));
-      totalAmount = totalDays * (rental.price_per_day || 0);
+      totalAmount = totalDays * pricePerDay;
     } else if (pricingModel === 'block') {
-      const blockDurationMinutes = rental.block_duration_minutes || 60;
-      const blocksUsed = Math.ceil(totalMinutes / blockDurationMinutes);
-      totalAmount = blocksUsed * (rental.price_block || 0);
-    } else if (pricingModel === 'fixed') {
-      // Preço fixo já definido no rental.initial_cost
-      totalAmount = rental.initial_cost || 0;
+      const blocksUsed = Math.ceil(totalMinutes / (blockDurationMinutes || 60));
+      totalAmount = blocksUsed * priceBlock;
+    } else if (pricingModel === 'fixed_rate') {
+      // Preço fixo já definido no rental.initial_cost ou usar price_fixed
+      totalAmount = rental.initial_cost || priceFixed;
       
       // Se passou do tempo, calcular overage
       if (actualEndTime > endTime) {
         overageMinutes = Math.floor((actualEndTime.getTime() - endTime.getTime()) / (1000 * 60));
-        const overageCost = overageMinutes * (rental.price_per_minute || 0);
+        const overageCost = overageMinutes * pricePerMinute;
         totalAmount += overageCost;
       }
     }
@@ -113,7 +141,12 @@ serve(async (req) => {
         success: true,
         totalAmount,
         overageMinutes,
-        actualEndTime: actualEndTime.toISOString()
+        actualEndTime: actualEndTime.toISOString(),
+        report: {
+          totalAmount,
+          overageMinutes,
+          actualEndTime: actualEndTime.toISOString()
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -15,7 +15,10 @@ serve(async (req) => {
   try {
     const { shopId, password } = await req.json();
 
+    console.log('[verify-admin-password] Request received:', { shopId, passwordLength: password?.length });
+
     if (!shopId || !password) {
+      console.log('[verify-admin-password] Missing shopId or password');
       return new Response(
         JSON.stringify({ valid: false, error: 'Missing shopId or password' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
@@ -34,8 +37,15 @@ serve(async (req) => {
       .eq('id', shopId)
       .single();
 
+    console.log('[verify-admin-password] Shop lookup:', { 
+      found: !!shop, 
+      hasPassword: !!shop?.admin_password,
+      passwordStartsWith: shop?.admin_password?.substring(0, 4),
+      error: error?.message 
+    });
+
     if (error || !shop) {
-      console.error('Error fetching shop:', error);
+      console.error('[verify-admin-password] Shop not found:', error);
       return new Response(
         JSON.stringify({ valid: false, error: 'Shop not found' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
@@ -43,14 +53,20 @@ serve(async (req) => {
     }
 
     // Verificar senha usando a função de hash bcrypt
+    console.log('[verify-admin-password] Calling verify_password RPC');
     const { data: verifyResult, error: verifyError } = await supabase
       .rpc('verify_password', {
         password: password,
         hash: shop.admin_password
       });
 
+    console.log('[verify-admin-password] Verification result:', { 
+      isValid: verifyResult, 
+      error: verifyError?.message 
+    });
+
     if (verifyError) {
-      console.error('Error verifying password:', verifyError);
+      console.error('[verify-admin-password] Error verifying password:', verifyError);
       return new Response(
         JSON.stringify({ valid: false, error: 'Error verifying password' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
@@ -59,7 +75,7 @@ serve(async (req) => {
 
     const isValid = verifyResult === true;
 
-    console.log(`Admin password verification for shop ${shopId}: ${isValid ? 'SUCCESS' : 'FAILED'}`);
+    console.log(`[verify-admin-password] Final result for shop ${shopId}: ${isValid ? 'SUCCESS' : 'FAILED'}`);
 
     return new Response(
       JSON.stringify({ valid: isValid }),
@@ -67,9 +83,10 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error in verify-admin-password:', error);
+    console.error('[verify-admin-password] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ valid: false, error: 'Internal server error' }),
+      JSON.stringify({ valid: false, error: 'Internal server error', details: errorMessage }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
