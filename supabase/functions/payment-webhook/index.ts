@@ -7,6 +7,16 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('🔔 Webhook recebido!', {
+    method: req.method,
+    url: req.url,
+    headers: {
+      origin: req.headers.get('origin'),
+      'content-type': req.headers.get('content-type'),
+      'x-webhook-secret': req.headers.get('x-webhook-secret') ? '[PRESENTE]' : '[AUSENTE]'
+    }
+  });
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });

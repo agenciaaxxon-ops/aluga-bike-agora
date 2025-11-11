@@ -161,8 +161,9 @@ const Planos = () => {
       if (!user) throw new Error("Usuário não encontrado");
 
       // Detecta se estamos em ambiente de desenvolvimento
-      const isDev = window.location.hostname.includes('lovable.app') || 
-                    window.location.hostname.includes('localhost');
+      const isDev = window.location.hostname.includes('lovable') || 
+                    window.location.hostname.includes('localhost') ||
+                    window.location.hostname.includes('127.0.0.1');
       
       const mode = isDev ? 'test' : 'prod';
       console.log(`Criando link de pagamento no modo: ${mode}`);
