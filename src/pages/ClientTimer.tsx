@@ -258,6 +258,23 @@ const ClientTimer = () => {
         pricing_model: data.pricing_model
       };
 
+      // Fallback seguro via Edge Function (bypassa RLS com service role)
+      if (!rentalData.store_contact) {
+        try {
+          const { data: contactData, error: contactErr } = await supabase.functions.invoke('get-rental-contact', {
+            body: { access_code: data.access_code }
+          });
+          if (!contactErr && contactData?.contact_phone) {
+            rentalData.store_contact = contactData.contact_phone;
+            if (contactData?.name && !rentalData.store_name) {
+              rentalData.store_name = contactData.name;
+            }
+          }
+        } catch (e) {
+          console.warn('[ClientTimer] get-rental-contact fallback failed', e);
+        }
+      }
+
       console.log('[ClientTimer] Rental data loaded:', {
         shop_rel: data.shop,
         shop_id: data.shop_id,
