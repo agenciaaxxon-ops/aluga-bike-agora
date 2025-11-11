@@ -226,23 +226,42 @@ const ClientTimer = () => {
         return;
       }
 
+      // Tentar obter dados da loja via relacionamento; se faltar, buscar diretamente pela shop_id
+      let shopName = data.shop?.name || null;
+      let contactPhone = data.shop?.contact_phone || null;
+      let shopAddress = data.shop?.address || null;
+
+      if ((!contactPhone || !shopName || !shopAddress) && data.shop_id) {
+        const { data: shopRow } = await supabase
+          .from('shops')
+          .select('name, contact_phone, address')
+          .eq('id', data.shop_id)
+          .maybeSingle();
+        if (shopRow) {
+          shopName = shopName || shopRow.name || null;
+          contactPhone = contactPhone || shopRow.contact_phone || null;
+          shopAddress = shopAddress || shopRow.address || null;
+        }
+      }
+
       const rentalData: RentalData = {
         id: data.id,
         item_name: data.item?.name || 'Item',
         item_type_name: data.item?.item_type?.name || 'Tipo',
         start_time: data.start_time,
         end_time: data.end_time,
-        store_name: data.shop?.name || 'Loja Parceira',
-        store_contact: data.shop?.contact_phone,
-        store_address: data.shop?.address,
+        store_name: shopName || 'Loja Parceira',
+        store_contact: contactPhone || undefined,
+        store_address: shopAddress || undefined,
         status: data.status,
         access_code: data.access_code,
         pricing_model: data.pricing_model
       };
 
       console.log('[ClientTimer] Rental data loaded:', {
-        shop: data.shop,
-        store_contact: rentalData.store_contact
+        shop_rel: data.shop,
+        shop_id: data.shop_id,
+        resolved_contact: rentalData.store_contact
       });
 
       setRental(rentalData);
