@@ -28,7 +28,8 @@ import {
   Plus, 
   AlertTriangle,
   MapPin,
-  Phone
+  Phone,
+  MessageCircle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -674,6 +675,21 @@ const ClientTimer = () => {
             )}
           </CardContent>
         </Card>
+
+        {rental.store_contact && (
+          <Button 
+            variant="outline" 
+            className="w-full mt-4 h-12"
+            onClick={() => {
+              const cleanPhone = rental.store_contact?.replace(/\D/g, '') || '';
+              const message = encodeURIComponent(`Olá! Estou com uma dúvida sobre meu aluguel (código: ${rental.access_code})`);
+              window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+            }}
+          >
+            <MessageCircle className="w-5 h-5 mr-2" />
+            Teve um problema? Nos contate
+          </Button>
+        )}
 
         <Card className="mt-6 border-0 shadow-lg">
           <CardHeader>
