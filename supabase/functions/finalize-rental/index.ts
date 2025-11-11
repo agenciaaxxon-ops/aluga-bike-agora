@@ -128,10 +128,18 @@ serve(async (req) => {
 
     // Atualizar o status do item
     if (rental.item_id) {
-      await supabase
+      console.log(`Atualizando item ${rental.item_id} para status: disponível`);
+      
+      const { error: itemUpdateError } = await supabase
         .from('items')
-        .update({ status: 'Disponível' })
+        .update({ status: 'disponível' })
         .eq('id', rental.item_id);
+
+      if (itemUpdateError) {
+        console.error('❌ ERRO ao atualizar status do item:', itemUpdateError);
+      } else {
+        console.log(`✅ Item ${rental.item_id} atualizado para disponível`);
+      }
     }
 
     console.log(`Rental ${rentalId} finalized. Total: R$ ${totalAmount.toFixed(2)}, Overage: ${overageMinutes} min`);
