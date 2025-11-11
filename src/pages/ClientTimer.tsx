@@ -240,6 +240,11 @@ const ClientTimer = () => {
         pricing_model: data.pricing_model
       };
 
+      console.log('[ClientTimer] Rental data loaded:', {
+        shop: data.shop,
+        store_contact: rentalData.store_contact
+      });
+
       setRental(rentalData);
       
     } catch (error) {
