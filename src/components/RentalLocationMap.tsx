@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -12,18 +12,6 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-// Componente interno para invalidar o tamanho do mapa
-const MapInvalidator = () => {
-  const map = useMap();
-  
-  useEffect(() => {
-    setTimeout(() => {
-      map.invalidateSize();
-    }, 300);
-  }, [map]);
-  
-  return null;
-};
 
 interface RentalLocationMapProps {
   latitude: number;
@@ -39,12 +27,12 @@ export const RentalLocationMap = ({
   lastUpdate 
 }: RentalLocationMapProps) => {
   const [isMapReady, setIsMapReady] = useState(false);
+  const mapRef = useRef<L.Map | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    // Pequeno delay para garantir que o DOM está pronto
-    const timer = setTimeout(() => {
-      setIsMapReady(true);
-    }, 100);
+    const timer = setTimeout(() => setIsMapReady(true), 50);
     return () => clearTimeout(timer);
   }, []);
 
@@ -72,26 +60,43 @@ export const RentalLocationMap = ({
     ? formatDistanceToNow(new Date(lastUpdate), { locale: ptBR, addSuffix: true })
     : 'Sem atualização recente';
 
+  useEffect(() => {
+    if (!isMapReady || !containerRef.current) return;
+    if (mapRef.current) return;
+
+    const map = L.map(containerRef.current).setView([latitude, longitude], 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const marker = L.marker([latitude, longitude]).addTo(map);
+    marker.bindPopup(`${clientName} - Atualizado ${formattedUpdate}`);
+
+    mapRef.current = map;
+    markerRef.current = marker;
+
+    setTimeout(() => map.invalidateSize(), 300);
+
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+  }, [isMapReady]);
+
+  useEffect(() => {
+    if (!mapRef.current || !markerRef.current) return;
+    markerRef.current.setLatLng([latitude, longitude]);
+    mapRef.current.setView([latitude, longitude]);
+  }, [latitude, longitude]);
+
   return (
     <div className="w-full">
-      <MapContainer
-        key={`${latitude}-${longitude}`}
-        center={[latitude, longitude]}
-        zoom={15}
+      <div
+        ref={containerRef}
         style={{ height: '400px', width: '100%', borderRadius: '8px' }}
         className="z-0"
-      >
-        <MapInvalidator />
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        />
-        <Marker position={[latitude, longitude]}>
-          <Popup>
-            {clientName} - Atualizado {formattedUpdate}
-          </Popup>
-        </Marker>
-      </MapContainer>
+      />
       <div className="mt-2 text-xs text-muted-foreground text-center">
         Coordenadas: {latitude.toFixed(6)}, {longitude.toFixed(6)}
       </div>
