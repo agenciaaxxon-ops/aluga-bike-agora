@@ -56,6 +56,7 @@ const ClientTimer = () => {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [selectedMinutes, setSelectedMinutes] = useState(0);
+  const [selectedDays, setSelectedDays] = useState(0);
   const [calculatedPrice, setCalculatedPrice] = useState(0);
   const [showPriceDialog, setShowPriceDialog] = useState(false);
   
@@ -263,8 +264,8 @@ const ClientTimer = () => {
     return isOvertime ? `-${timeString}` : timeString;
   };
 
-  const handleTimeSelection = async (minutes: number) => {
-    // Busca o preço por minuto da loja
+  const handleTimeSelection = async (value: number, isDays: boolean = false) => {
+    // Busca o preço adequado da loja
     if (!rental?.id) return;
 
     try {
@@ -282,8 +283,21 @@ const ClientTimer = () => {
         .eq('id', rentalData.shop_id)
         .single();
 
-      const pricePerMinute = Number(shop?.price_per_minute || 0.69);
-      const totalPrice = pricePerMinute * minutes;
+      let totalPrice = 0;
+      let minutes = value;
+
+      if (isDays) {
+        // Para dias, converter para minutos e calcular baseado no preço por minuto
+        const pricePerMinute = Number(shop?.price_per_minute || 0.69);
+        minutes = value * 24 * 60; // Converter dias em minutos
+        totalPrice = pricePerMinute * minutes;
+        setSelectedDays(value);
+      } else {
+        // Para minutos, usar preço por minuto
+        const pricePerMinute = Number(shop?.price_per_minute || 0.69);
+        totalPrice = pricePerMinute * value;
+        setSelectedDays(0);
+      }
 
       setSelectedMinutes(minutes);
       setCalculatedPrice(totalPrice);
@@ -324,9 +338,13 @@ const ClientTimer = () => {
       const newEndTime = new Date(new Date(rental.end_time).getTime() + selectedMinutes * 60 * 1000);
       setRental(prev => prev ? { ...prev, end_time: newEndTime.toISOString() } : null);
       
+      const displayText = selectedDays > 0 
+        ? `+${selectedDays} ${selectedDays === 1 ? 'dia' : 'dias'}` 
+        : `+${selectedMinutes} minutos`;
+      
       toast({ 
         title: "✓ Tempo adicionado!",
-        description: `+${selectedMinutes} minutos`,
+        description: displayText,
       });
       
     } catch (error: any) {
@@ -337,6 +355,7 @@ const ClientTimer = () => {
       });
     } finally {
       setSelectedMinutes(0);
+      setSelectedDays(0);
       setCalculatedPrice(0);
     }
   };
@@ -513,38 +532,77 @@ const ClientTimer = () => {
               </SheetDescription>
             </SheetHeader>
             <div className="grid grid-cols-2 gap-4 pb-6">
-              <Button 
-                variant="outline" 
-                onClick={() => handleTimeSelection(15)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
-              >
-                <Clock className="w-8 h-8" />
-                <span className="font-semibold">+15 min</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleTimeSelection(30)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
-              >
-                <Clock className="w-8 h-8" />
-                <span className="font-semibold">+30 min</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleTimeSelection(60)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
-              >
-                <Clock className="w-8 h-8" />
-                <span className="font-semibold">+1 hora</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleTimeSelection(120)} 
-                className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
-              >
-                <Clock className="w-8 h-8" />
-                <span className="font-semibold">+2 horas</span>
-              </Button>
+              {rental.pricing_model === 'per_day' ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(1, true)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+1 dia</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(2, true)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+2 dias</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(3, true)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+3 dias</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(7, true)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+7 dias</span>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(15, false)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+15 min</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(30, false)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+30 min</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(60, false)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+1 hora</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleTimeSelection(120, false)} 
+                    className="h-24 flex-col gap-2 text-lg hover:bg-primary/10 hover:border-primary"
+                  >
+                    <Clock className="w-8 h-8" />
+                    <span className="font-semibold">+2 horas</span>
+                  </Button>
+                </>
+              )}
             </div>
           </SheetContent>
         </Sheet>
@@ -555,7 +613,11 @@ const ClientTimer = () => {
             <AlertDialogHeader>
               <AlertDialogTitle>Confirmar adição de tempo</AlertDialogTitle>
               <AlertDialogDescription>
-                Adicionar <strong>+{selectedMinutes} minutos</strong> por{" "}
+                Adicionar <strong>
+                  {selectedDays > 0 
+                    ? `+${selectedDays} ${selectedDays === 1 ? 'dia' : 'dias'}` 
+                    : `+${selectedMinutes} minutos`}
+                </strong> por{" "}
                 <strong>
                   {new Intl.NumberFormat('pt-BR', {
                     style: 'currency',

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { formatDistanceToNow } from 'date-fns';
@@ -38,11 +38,32 @@ export const RentalLocationMap = ({
   clientName, 
   lastUpdate 
 }: RentalLocationMapProps) => {
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  useEffect(() => {
+    // Pequeno delay para garantir que o DOM está pronto
+    const timer = setTimeout(() => {
+      setIsMapReady(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Validação de coordenadas
   if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
     return (
       <div className="w-full h-[400px] flex items-center justify-center bg-muted rounded-lg">
         <p className="text-muted-foreground">Coordenadas inválidas ou não disponíveis</p>
+      </div>
+    );
+  }
+
+  if (!isMapReady) {
+    return (
+      <div className="w-full h-[400px] flex items-center justify-center bg-muted rounded-lg">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+          <p className="text-muted-foreground">Carregando mapa...</p>
+        </div>
       </div>
     );
   }
