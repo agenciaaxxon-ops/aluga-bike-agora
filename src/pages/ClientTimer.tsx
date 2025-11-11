@@ -75,6 +75,9 @@ const ClientTimer = () => {
 
   useEffect(() => {
     if (!rental) return;
+    
+    // Para taxa fixa, não calcular tempo
+    if (rental.pricing_model === 'fixed_rate') return;
 
     const calculateTime = () => {
       const now = new Date().getTime();
@@ -432,50 +435,67 @@ const ClientTimer = () => {
           </CardHeader>
         </Card>
 
-        <Card className={`mb-6 border-0 shadow-lg ${isExpired ? 'ring-2 ring-destructive/50' : showWarning ? 'ring-2 ring-warning/50' : ''}`}>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <div className="mb-4">
-                <Clock className={`w-12 h-12 mx-auto mb-2 ${
-                  isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-primary'
-                }`} />
-                <h2 className="text-lg font-medium text-muted-foreground">
-                  {isExpired ? 'Tempo Excedido' : 'Tempo Restante'}
-                </h2>
-              </div>
-              
-              <div className={`text-6xl font-mono font-bold mb-4 ${
-                isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-foreground'
-              }`}>
-                {formatTime(timeLeft)}
-              </div>
-              
-              {isExpired && rental.pricing_model !== 'fixed_rate' && (
-                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-center text-destructive mb-2">
-                    <AlertTriangle className="w-5 h-5 mr-2" />
-                    <span className="font-medium">Tempo esgotado!</span>
-                  </div>
-                  <p className="text-sm text-destructive/80">
-                    Retorne o veículo para a loja ou adicione mais tempo
-                  </p>
+        {rental.pricing_model !== 'fixed_rate' && (
+          <Card className={`mb-6 border-0 shadow-lg ${isExpired ? 'ring-2 ring-destructive/50' : showWarning ? 'ring-2 ring-warning/50' : ''}`}>
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <div className="mb-4">
+                  <Clock className={`w-12 h-12 mx-auto mb-2 ${
+                    isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-primary'
+                  }`} />
+                  <h2 className="text-lg font-medium text-muted-foreground">
+                    {isExpired ? 'Tempo Excedido' : 'Tempo Restante'}
+                  </h2>
                 </div>
-              )}
-              
-              {showWarning && !isExpired && rental.pricing_model !== 'fixed_rate' && (
-                <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-center text-warning mb-2">
-                    <AlertTriangle className="w-5 h-5 mr-2" />
-                    <span className="font-medium">Atenção!</span>
-                  </div>
-                  <p className="text-sm text-warning/80">
-                    Seu tempo está acabando. Considere adicionar mais tempo.
-                  </p>
+                
+                <div className={`text-6xl font-mono font-bold mb-4 ${
+                  isExpired ? 'text-destructive' : showWarning ? 'text-warning' : 'text-foreground'
+                }`}>
+                  {formatTime(timeLeft)}
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+                
+                {isExpired && rental.pricing_model !== 'fixed_rate' && (
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-center text-destructive mb-2">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span className="font-medium">Tempo esgotado!</span>
+                    </div>
+                    <p className="text-sm text-destructive/80">
+                      Retorne o veículo para a loja ou adicione mais tempo
+                    </p>
+                  </div>
+                )}
+                
+                {showWarning && !isExpired && rental.pricing_model !== 'fixed_rate' && (
+                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
+                    <div className="flex items-center justify-center text-warning mb-2">
+                      <AlertTriangle className="w-5 h-5 mr-2" />
+                      <span className="font-medium">Atenção!</span>
+                    </div>
+                    <p className="text-sm text-warning/80">
+                      Seu tempo está acabando. Considere adicionar mais tempo.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {rental.pricing_model === 'fixed_rate' && (
+          <Card className="mb-6 border-0 shadow-lg">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <Badge className="text-lg px-4 py-2 mb-3">
+                  💰 Taxa Fixa - Sem limite de tempo
+                </Badge>
+                <p className="text-sm text-muted-foreground">
+                  Este aluguel não possui tempo limite
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {rental.pricing_model !== 'fixed_rate' && (
           <Sheet open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
@@ -608,12 +628,14 @@ const ClientTimer = () => {
                 {new Date(rental.start_time).toLocaleString('pt-BR')}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Término previsto:</span>
-              <span className="font-medium">
-                {new Date(rental.end_time).toLocaleString('pt-BR')}
-              </span>
-            </div>
+            {rental.pricing_model !== 'fixed_rate' && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Término previsto:</span>
+                <span className="font-medium">
+                  {new Date(rental.end_time).toLocaleString('pt-BR')}
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

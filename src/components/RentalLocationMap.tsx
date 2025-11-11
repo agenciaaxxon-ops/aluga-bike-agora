@@ -67,12 +67,7 @@ export const RentalLocationMap = ({
         />
         <Marker position={[latitude, longitude]}>
           <Popup>
-            <div className="text-sm">
-              <strong className="block mb-1">{clientName}</strong>
-              <span className="text-muted-foreground">
-                Atualizado {formattedUpdate}
-              </span>
-            </div>
+            {clientName} - Atualizado {formattedUpdate}
           </Popup>
         </Marker>
       </MapContainer>

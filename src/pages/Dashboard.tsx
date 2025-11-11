@@ -49,6 +49,7 @@ interface RentalReport {
   initialCost: number;
   overtimeCost: number;
   totalAmount: number;
+  pricing_model?: string;
 }
 
 const Dashboard = () => {
@@ -404,7 +405,8 @@ const Dashboard = () => {
           pricePerUnit: itemData.item_type.price_per_minute || 0,
           initialCost: totalAmount - (overageMinutes * (itemData.item_type.price_per_minute || 0)),
           overtimeCost: overageMinutes * (itemData.item_type.price_per_minute || 0),
-          totalAmount
+          totalAmount,
+          pricing_model: rentalToEnd.pricing_model
         });
         setIsReportModalOpen(true);
       }
@@ -906,10 +908,55 @@ const Dashboard = () => {
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Cliente:</span><span className="font-medium">{rentalReport.clientName}</span></div>
                 <div className="flex justify-between"><span className="text-sm text-muted-foreground">Item:</span><span className="font-medium">{rentalReport.itemTypeName}</span></div>
                 <div className="border-t my-2"></div>
-                <div className="flex justify-between"><span className="text-sm text-muted-foreground">Tempo Contratado:</span><span className="font-medium">{rentalReport.initialDuration} min</span></div>
-                {rentalReport.overtimeDuration > 0 && <div className="flex justify-between text-destructive"><span className="text-sm">Tempo Excedente:</span><span className="font-medium">{rentalReport.overtimeDuration} min</span></div>}
-                <div className="border-t my-2"></div>
-                <div className="flex justify-between"><span className="text-sm text-muted-foreground">Total de Minutos:</span><span className="font-medium">{rentalReport.totalMinutes} min</span></div>
+                
+                {rentalReport.pricing_model === 'fixed_rate' ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Tipo:</span>
+                      <span className="font-medium">Taxa Fixa</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Tempo de uso:</span>
+                      <span className="font-medium">{Math.floor(rentalReport.totalMinutes / 60)}h {rentalReport.totalMinutes % 60}min (informativo)</span>
+                    </div>
+                  </>
+                ) : rentalReport.pricing_model === 'per_day' ? (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Tempo Contratado:</span>
+                      <span className="font-medium">{Math.floor(rentalReport.initialDuration / 1440)} dia(s)</span>
+                    </div>
+                    {rentalReport.overtimeDuration > 0 && (
+                      <div className="flex justify-between text-destructive">
+                        <span className="text-sm">Tempo Excedente:</span>
+                        <span className="font-medium">{Math.floor(rentalReport.overtimeDuration / 1440)} dia(s) e {Math.floor((rentalReport.overtimeDuration % 1440) / 60)}h</span>
+                      </div>
+                    )}
+                    <div className="border-t my-2"></div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Total de Tempo:</span>
+                      <span className="font-medium">{Math.floor(rentalReport.totalMinutes / 1440)} dia(s) e {Math.floor((rentalReport.totalMinutes % 1440) / 60)}h</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Tempo Contratado:</span>
+                      <span className="font-medium">{rentalReport.initialDuration} min</span>
+                    </div>
+                    {rentalReport.overtimeDuration > 0 && (
+                      <div className="flex justify-between text-destructive">
+                        <span className="text-sm">Tempo Excedente:</span>
+                        <span className="font-medium">{rentalReport.overtimeDuration} min</span>
+                      </div>
+                    )}
+                    <div className="border-t my-2"></div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Total de Minutos:</span>
+                      <span className="font-medium">{rentalReport.totalMinutes} min</span>
+                    </div>
+                  </>
+                )}
                 <div className="border-t pt-3 mt-3">
                   <div className="flex justify-between items-center">
                     <span className="font-medium">Total a Pagar:</span>
