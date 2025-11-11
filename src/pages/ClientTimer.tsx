@@ -676,20 +676,27 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        {rental.store_contact && (
-          <Button 
-            variant="outline" 
-            className="w-full mt-4 h-12"
-            onClick={() => {
-              const cleanPhone = rental.store_contact?.replace(/\D/g, '') || '';
-              const message = encodeURIComponent(`Olá! Estou com uma dúvida sobre meu aluguel (código: ${rental.access_code})`);
-              window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
-            }}
-          >
-            <MessageCircle className="w-5 h-5 mr-2" />
-            Teve um problema? Nos contate
-          </Button>
-        )}
+        <Button 
+          variant="outline" 
+          className="w-full mt-4 h-12"
+          disabled={!rental.store_contact}
+          onClick={() => {
+            if (!rental.store_contact) {
+              toast({
+                title: "Contato não disponível",
+                description: "A loja não cadastrou um número de contato.",
+                variant: "destructive"
+              });
+              return;
+            }
+            const cleanPhone = rental.store_contact.replace(/\D/g, '');
+            const message = encodeURIComponent(`Olá! Estou com uma dúvida sobre meu aluguel (código: ${rental.access_code})`);
+            window.open(`https://wa.me/55${cleanPhone}?text=${message}`, '_blank');
+          }}
+        >
+          <MessageCircle className="w-5 h-5 mr-2" />
+          Teve um problema? Nos contate
+        </Button>
 
         <Card className="mt-6 border-0 shadow-lg">
           <CardHeader>
