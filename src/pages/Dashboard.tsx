@@ -740,7 +740,7 @@ const Dashboard = () => {
               return (
                 <Card 
                   key={rental.id} 
-                  className={`border-0 shadow-lg flex flex-col hover:shadow-emerald transition-all duration-300 hover:scale-[1.02] animate-fade-in-up ${isOvertime ? 'ring-2 ring-destructive/50 animate-pulse-glow' : ''}`}
+                  className={`border-0 shadow-lg flex flex-col hover:shadow-emerald transition-all duration-300 hover:scale-[1.02] animate-fade-in-up ${isOvertime && pricingModel !== 'fixed_rate' ? 'ring-2 ring-destructive/50 animate-pulse-glow' : ''}`}
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
                   <CardHeader>
@@ -754,8 +754,8 @@ const Dashboard = () => {
                           <p className="text-sm text-muted-foreground">{rental.item?.name || 'Item'}</p>
                         </div>
                       </div>
-                      <Badge className={`transition-all duration-300 ${isOvertime ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground"}`}>
-                        {isOvertime ? "Excedido" : "Ativo"}
+                      <Badge className={`transition-all duration-300 ${isOvertime && pricingModel !== 'fixed_rate' ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground"}`}>
+                        {isOvertime && pricingModel !== 'fixed_rate' ? "Excedido" : "Ativo"}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -791,18 +791,20 @@ const Dashboard = () => {
                         )}
                       </div>
                     )}
-                    <div className={`flex items-center justify-between text-sm transition-all duration-300 ${isOvertime ? 'text-destructive font-bold scale-105' : ''}`}>
-                      <span className="text-muted-foreground">Tempo:</span>
-                      <span className="font-mono font-medium">
-                        {pricingModel === 'per_day' ? (() => {
-                          const totalMinutes = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 60000);
-                          const days = Math.floor(Math.abs(totalMinutes) / 1440);
-                          const hours = Math.floor((Math.abs(totalMinutes) % 1440) / 60);
-                          const isNegative = totalMinutes < 0;
-                          return `${isNegative ? '-' : ''}${days}d ${hours}h`;
-                        })() : formatTime(timeLeftSeconds)}
-                      </span>
-                    </div>
+                    {pricingModel !== 'fixed_rate' && (
+                      <div className={`flex items-center justify-between text-sm transition-all duration-300 ${isOvertime ? 'text-destructive font-bold scale-105' : ''}`}>
+                        <span className="text-muted-foreground">Tempo:</span>
+                        <span className="font-mono font-medium">
+                          {pricingModel === 'per_day' ? (() => {
+                            const totalMinutes = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 60000);
+                            const days = Math.floor(Math.abs(totalMinutes) / 1440);
+                            const hours = Math.floor((Math.abs(totalMinutes) % 1440) / 60);
+                            const isNegative = totalMinutes < 0;
+                            return `${isNegative ? '-' : ''}${days}d ${hours}h`;
+                          })() : formatTime(timeLeftSeconds)}
+                        </span>
+                      </div>
+                    )}
                     
                     <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10 transition-all duration-300 hover:bg-primary/10 hover:border-primary/20">
                       <div className="flex items-center gap-2">

@@ -44,6 +44,7 @@ interface RentalData {
   store_address?: string;
   status: string;
   access_code: string;
+  pricing_model?: string;
 }
 
 const ClientTimer = () => {
@@ -209,7 +210,7 @@ const ClientTimer = () => {
       
       const { data, error } = await supabase
         .from('rentals')
-        .select('*, shop:shops(name, contact_phone, address), item:items(name, item_type:item_types(name))')
+        .select('*, pricing_model, shop:shops(name, contact_phone, address), item:items(name, item_type:item_types(name))')
         .eq('access_code', rentalId)
         .eq('status', 'Ativo')
         .maybeSingle();
@@ -230,7 +231,8 @@ const ClientTimer = () => {
         store_contact: data.shop?.contact_phone,
         store_address: data.shop?.address,
         status: data.status,
-        access_code: data.access_code
+        access_code: data.access_code,
+        pricing_model: data.pricing_model
       };
 
       setRental(rentalData);
@@ -448,7 +450,7 @@ const ClientTimer = () => {
                 {formatTime(timeLeft)}
               </div>
               
-              {isExpired && (
+              {isExpired && rental.pricing_model !== 'fixed_rate' && (
                 <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-center text-destructive mb-2">
                     <AlertTriangle className="w-5 h-5 mr-2" />
@@ -460,7 +462,7 @@ const ClientTimer = () => {
                 </div>
               )}
               
-              {showWarning && !isExpired && (
+              {showWarning && !isExpired && rental.pricing_model !== 'fixed_rate' && (
                 <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
                   <div className="flex items-center justify-center text-warning mb-2">
                     <AlertTriangle className="w-5 h-5 mr-2" />
@@ -475,13 +477,14 @@ const ClientTimer = () => {
           </CardContent>
         </Card>
 
-        <Sheet open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
-          <SheetTrigger asChild>
-            <Button className="w-full mb-6" size="lg">
-              <Plus className="w-5 h-5 mr-2" />
-              Adicionar Mais Tempo
-            </Button>
-          </SheetTrigger>
+        {rental.pricing_model !== 'fixed_rate' && (
+          <Sheet open={isAddTimeModalOpen} onOpenChange={setIsAddTimeModalOpen}>
+            <SheetTrigger asChild>
+              <Button className="w-full mb-6" size="lg">
+                <Plus className="w-5 h-5 mr-2" />
+                Adicionar Mais Tempo
+              </Button>
+            </SheetTrigger>
           <SheetContent side="bottom" className="rounded-t-3xl">
             <SheetHeader className="text-left mb-6">
               <SheetTitle className="text-2xl">Adicionar Tempo</SheetTitle>
@@ -525,6 +528,7 @@ const ClientTimer = () => {
             </div>
           </SheetContent>
         </Sheet>
+        )}
 
         <AlertDialog open={showPriceDialog} onOpenChange={setShowPriceDialog}>
           <AlertDialogContent>
