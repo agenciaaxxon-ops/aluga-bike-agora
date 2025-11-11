@@ -316,8 +316,8 @@ const Dashboard = () => {
       initialCost = blocks * (selectedType.price_block || 0);
       endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
     } else {
-      // fixed_rate
-      durationMinutes = parseInt(formData.get("duration") as string, 10);
+      // fixed_rate - usar duração padrão de 24 horas
+      durationMinutes = 1440; // 24 horas
       initialCost = selectedType.price_fixed || 0;
       endTime = new Date(startTime.getTime() + durationMinutes * 60 * 1000);
     }
@@ -571,6 +571,14 @@ const Dashboard = () => {
                   <Input id="clientPhone" name="clientPhone" placeholder="Ex: (13) 99999-9999" />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="clientCpf">CPF (Opcional)</Label>
+                  <Input id="clientCpf" name="clientCpf" placeholder="Ex: 123.456.789-00" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="clientAddress">Endereço (Opcional)</Label>
+                  <Input id="clientAddress" name="clientAddress" placeholder="Ex: Rua ABC, 123" />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="item-type">Tipo de Item</Label>
                   <Select value={selectedItemType} onValueChange={setSelectedItemType} required>
                     <SelectTrigger>
@@ -656,21 +664,36 @@ const Dashboard = () => {
                     );
                   }
 
-                  if (pricingModel === 'fixed_rate') {
+                  if (pricingModel === 'block') {
                     return (
                       <div className="space-y-2">
-                        <Label>Duração Estimada</Label>
-                        <Select name="duration" required defaultValue="60">
+                        <Label>Quantidade de Blocos</Label>
+                        <Select name="blocks" required defaultValue="1">
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="30">30 minutos</SelectItem>
-                            <SelectItem value="60">1 hora</SelectItem>
-                            <SelectItem value="120">2 horas</SelectItem>
-                            <SelectItem value="180">3 horas</SelectItem>
+                            <SelectItem value="1">1 bloco</SelectItem>
+                            <SelectItem value="2">2 blocos</SelectItem>
+                            <SelectItem value="3">3 blocos</SelectItem>
+                            <SelectItem value="4">4 blocos</SelectItem>
+                            <SelectItem value="5">5 blocos</SelectItem>
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-muted-foreground">
-                          Taxa fixa: R$ {selectedType.price_fixed?.toFixed(2)} (cobrança proporcional se devolver antes)
+                          Bloco de {selectedType.block_duration_value} {selectedType.block_duration_unit === 'day' ? 'dia(s)' : 'hora(s)'} 
+                          - R$ {selectedType.price_block?.toFixed(2)} por bloco
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  if (pricingModel === 'fixed_rate') {
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-sm text-muted-foreground">
+                          Taxa fixa: <span className="font-semibold text-primary">R$ {selectedType.price_fixed?.toFixed(2)}</span>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Valor único independente do tempo de uso
                         </p>
                       </div>
                     );
@@ -697,22 +720,21 @@ const Dashboard = () => {
               const currentTime = nowTick;
               const minutesElapsed = Math.ceil((currentTime - startTime) / (1000 * 60));
               
-              // Calcular custo atual baseado no modelo de precificação
-              const itemType = rental.item?.item_type;
-              const pricingModel = itemType?.pricing_model || 'per_minute';
+              // Calcular custo atual baseado no modelo de precificação usando dados desnormalizados
+              const pricingModel = rental.pricing_model || 'per_minute';
               let currentCost = 0;
               
               if (pricingModel === 'per_minute') {
-                currentCost = minutesElapsed * (itemType?.price_per_minute || 0);
+                currentCost = minutesElapsed * (rental.price_per_minute || 0);
               } else if (pricingModel === 'per_day') {
-                const daysElapsed = Math.max(1, Math.ceil(minutesElapsed / (24 * 60)));
-                currentCost = daysElapsed * (itemType?.price_per_day || 0);
+                const daysElapsed = Math.max(1, Math.ceil(minutesElapsed / 1440));
+                currentCost = daysElapsed * (rental.price_per_day || 0);
               } else if (pricingModel === 'block') {
-                const blockDurationMinutes = itemType?.block_duration_value * (itemType?.block_duration_unit === 'day' ? 1440 : 60) || 60;
+                const blockDurationMinutes = rental.block_duration_minutes || 60;
                 const blocksUsed = Math.ceil(minutesElapsed / blockDurationMinutes);
-                currentCost = blocksUsed * (itemType?.price_block || 0);
+                currentCost = blocksUsed * (rental.price_block || 0);
               } else if (pricingModel === 'fixed_rate') {
-                currentCost = itemType?.price_fixed || 0;
+                currentCost = rental.price_fixed || 0;
               }
               
               return (
@@ -771,7 +793,15 @@ const Dashboard = () => {
                     )}
                     <div className={`flex items-center justify-between text-sm transition-all duration-300 ${isOvertime ? 'text-destructive font-bold scale-105' : ''}`}>
                       <span className="text-muted-foreground">Tempo:</span>
-                      <span className="font-mono font-medium">{formatTime(timeLeftSeconds)}</span>
+                      <span className="font-mono font-medium">
+                        {pricingModel === 'per_day' ? (() => {
+                          const totalMinutes = Math.floor((new Date(rental.end_time).getTime() - nowTick) / 60000);
+                          const days = Math.floor(Math.abs(totalMinutes) / 1440);
+                          const hours = Math.floor((Math.abs(totalMinutes) % 1440) / 60);
+                          const isNegative = totalMinutes < 0;
+                          return `${isNegative ? '-' : ''}${days}d ${hours}h`;
+                        })() : formatTime(timeLeftSeconds)}
+                      </span>
                     </div>
                     
                     <div className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/10 transition-all duration-300 hover:bg-primary/10 hover:border-primary/20">

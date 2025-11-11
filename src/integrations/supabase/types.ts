@@ -178,6 +178,7 @@ export type Database = {
           latitude: number | null
           longitude: number | null
           price_block: number | null
+          price_fixed: number | null
           price_per_day: number | null
           price_per_minute: number | null
           pricing_model: string | null
@@ -208,6 +209,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           price_block?: number | null
+          price_fixed?: number | null
           price_per_day?: number | null
           price_per_minute?: number | null
           pricing_model?: string | null
@@ -238,6 +240,7 @@ export type Database = {
           latitude?: number | null
           longitude?: number | null
           price_block?: number | null
+          price_fixed?: number | null
           price_per_day?: number | null
           price_per_minute?: number | null
           pricing_model?: string | null
