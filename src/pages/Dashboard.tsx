@@ -382,7 +382,7 @@ const Dashboard = () => {
 
       toast({
         title: "Locação finalizada",
-        description: `Valor total: R$ ${totalAmount.toFixed(2)}${overageMinutes > 0 ? ` (${overageMinutes} min de acréscimo)` : ''}`,
+        description: `Valor total: R$ ${(totalAmount || 0).toFixed(2)}${overageMinutes > 0 ? ` (${overageMinutes} min de acréscimo)` : ''}`,
       });
     } catch (error) {
       console.error('Erro ao finalizar aluguel:', error);
@@ -664,8 +664,24 @@ const Dashboard = () => {
               const startTime = new Date(rental.start_time).getTime();
               const currentTime = nowTick;
               const minutesElapsed = Math.ceil((currentTime - startTime) / (1000 * 60));
-              const pricePerMinute = rental.item?.item_type?.price_per_minute || 0;
-              const currentCost = minutesElapsed * pricePerMinute;
+              
+              // Calcular custo atual baseado no modelo de precificação
+              const itemType = rental.item?.item_type;
+              const pricingModel = itemType?.pricing_model || 'per_minute';
+              let currentCost = 0;
+              
+              if (pricingModel === 'per_minute') {
+                currentCost = minutesElapsed * (itemType?.price_per_minute || 0);
+              } else if (pricingModel === 'per_day') {
+                const daysElapsed = Math.max(1, Math.ceil(minutesElapsed / (24 * 60)));
+                currentCost = daysElapsed * (itemType?.price_per_day || 0);
+              } else if (pricingModel === 'block') {
+                const blockDurationMinutes = itemType?.block_duration_value * (itemType?.block_duration_unit === 'day' ? 1440 : 60) || 60;
+                const blocksUsed = Math.ceil(minutesElapsed / blockDurationMinutes);
+                currentCost = blocksUsed * (itemType?.price_block || 0);
+              } else if (pricingModel === 'fixed_rate') {
+                currentCost = itemType?.price_fixed || 0;
+              }
               
               return (
                 <Card 
